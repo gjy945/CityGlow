@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { skyApi, type SkyViewResult } from '../api/sky'
 import StarCanvas from '../components/StarCanvas.vue'
 import SkyControlBar from '../components/SkyControlBar.vue'
+import ConstellationMythCard from '../components/ConstellationMythCard.vue'
 
 const { t } = useI18n()
 
@@ -29,8 +30,38 @@ const skyView = ref<SkyViewResult | null>(null)
 const loading = ref(false)
 const error = ref<string>('')
 
-// 悬停的星座名(Phase 2 暂不实现鼠标交互,留作 prop 通道)
+// 悬停的星座名(传给 StarCanvas 控制高亮)
 const hoveredConstellation = ref<string | null>(null)
+// 选中的星座名(点击后弹出神话卡)
+const selectedConstellation = ref<string>('')
+// 神话卡显隐
+const mythCardVisible = ref(false)
+
+// 选中星座的拉丁名 / 中文名(从 skyView 查表传给神话卡头部)
+const selectedLatin = computed(() => {
+  const c = skyView.value?.constellations.find((x) => x.name === selectedConstellation.value)
+  return c?.latin ?? ''
+})
+const selectedChinese = computed(() => {
+  const c = skyView.value?.constellations.find((x) => x.name === selectedConstellation.value)
+  return c?.chinese ?? ''
+})
+
+// StarCanvas 悬停:更新 hoveredConstellation(回传给 StarCanvas 作高亮 prop)
+function onHover(name: string | null) {
+  hoveredConstellation.value = name
+}
+
+// StarCanvas 点击:设置选中星座并打开神话卡
+function onSelect(name: string) {
+  selectedConstellation.value = name
+  mythCardVisible.value = true
+}
+
+// 关闭神话卡
+function closeMythCard() {
+  mythCardVisible.value = false
+}
 
 async function loadSkyView() {
   loading.value = true
@@ -141,6 +172,8 @@ const subtitle = computed(() => t('skyAtlas.subtitle'))
         v-else
         :sky-view="skyView"
         :hovered-constellation="hoveredConstellation"
+        @hover="onHover"
+        @select="onSelect"
       />
 
       <!-- 数据加载中覆盖层(已有数据时刷新) -->
@@ -148,6 +181,15 @@ const subtitle = computed(() => t('skyAtlas.subtitle'))
         <div class="spinner spinner--sm" />
       </div>
     </div>
+
+    <!-- 神话卡弹窗 -->
+    <ConstellationMythCard
+      :constellation="selectedConstellation"
+      :visible="mythCardVisible"
+      :latin="selectedLatin"
+      :chinese="selectedChinese"
+      @close="closeMythCard"
+    />
   </section>
 </template>
 

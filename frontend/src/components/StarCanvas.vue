@@ -10,8 +10,19 @@ const props = withDefaults(defineProps<Props>(), {
   hoveredConstellation: null,
 })
 
+// 鼠标交互:悬停高亮 + 点击选中
+const emit = defineEmits<{
+  'hover': [value: string | null]
+  'select': [value: string]
+}>()
+
 const canvas = ref<HTMLCanvasElement>()
 const containerRef = ref<HTMLDivElement>()
+
+// 光标状态:悬停在星座上时显示 pointer
+const cursorPointer = ref(false)
+// 记录上次悬停的星座,避免 mousemove 高频重复 emit
+let lastHovered: string | null = null
 
 // Canvas 显示尺寸(CSS 像素),由 ResizeObserver 更新
 let cssWidth = 0
@@ -242,7 +253,72 @@ function handleResize() {
   redraw()
 }
 
+// 命中检测:找到距离鼠标最近的星座(点到星座几何中心的距离)
+// 阈值 80px 内则认为命中,返回星座 name;否则返回 null
+const HOVER_THRESHOLD = 80
+function findConstellationAt(mouseX: number, mouseY: number): string | null {
+  const sv = props.skyView
+  if (!sv || sv.constellations.length === 0) return null
+  if (cssWidth === 0 || cssHeight === 0) return null
+  const cx = cssWidth / 2
+  const cy = cssHeight / 2
+  const maxR = (Math.min(cssWidth, cssHeight) / 2) * 0.9
+  let nearest: string | null = null
+  let minDist = HOVER_THRESHOLD
+  for (const c of sv.constellations) {
+    if (c.stars.length === 0) continue
+    const center = constellationCenter(c.stars, cx, cy, maxR)
+    const d = Math.hypot(center.x - mouseX, center.y - mouseY)
+    if (d < minDist) {
+      minDist = d
+      nearest = c.name
+    }
+  }
+  return nearest
+}
+
+// 鼠标移动:检测命中并 emit hover(仅在变化时触发,避免高频抖动)
+function onMouseMove(e: MouseEvent) {
+  const cvs = canvas.value
+  if (!cvs) return
+  const rect = cvs.getBoundingClientRect()
+  const x = e.clientX - rect.left
+  const y = e.clientY - rect.top
+  const hit = findConstellationAt(x, y)
+  if (hit !== lastHovered) {
+    lastHovered = hit
+    cursorPointer.value = !!hit
+    emit('hover', hit)
+  }
+}
+
+// 点击:命中则 emit select
+function onClick(e: MouseEvent) {
+  const cvs = canvas.value
+  if (!cvs) return
+  const rect = cvs.getBoundingClientRect()
+  const x = e.clientX - rect.left
+  const y = e.clientY - rect.top
+  const hit = findConstellationAt(x, y)
+  if (hit) emit('select', hit)
+}
+
+// 鼠标离开 Canvas:清除悬停
+function onMouseLeave() {
+  if (lastHovered !== null) {
+    lastHovered = null
+    cursorPointer.value = false
+    emit('hover', null)
+  }
+}
+
 watch(() => props.skyView, () => {
+  // 数据刷新后清除过期的悬停状态
+  if (lastHovered !== null) {
+    lastHovered = null
+    cursorPointer.value = false
+    emit('hover', null)
+  }
   nextTick(redraw)
 }, { deep: false })
 
@@ -271,7 +347,14 @@ onUnmounted(() => {
 
 <template>
   <div ref="containerRef" class="star-canvas-container">
-    <canvas ref="canvas" class="star-canvas" />
+    <canvas
+      ref="canvas"
+      class="star-canvas"
+      :style="{ cursor: cursorPointer ? 'pointer' : 'default' }"
+      @mousemove="onMouseMove"
+      @click="onClick"
+      @mouseleave="onMouseLeave"
+    />
   </div>
 </template>
 
