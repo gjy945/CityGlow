@@ -1,0 +1,39 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+
+# 上传文件目录(保留占位)
+uploads/*
+!uploads/.gitkeep
+
+# 本地配置覆盖
+application-local.yml
+application-local.properties
+application-secret.yml
+application-prod.yml
+
+# 环境变量文件(含真实 API Key,严禁提交)
+.env
+.env.*
+!.env.example
+
+# OS 文件
+.DS_Store
+Thumbs.db
+
+# 证书与密钥
+*.p12
+*.jks
+*.keystore
+*.pem
+
+# 日志
+*.log
+logs/
