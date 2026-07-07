@@ -12,7 +12,8 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,7 +29,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
  * <ul>
  *   <li>/GST 端点 URL 含 startDate、endDate、api_key 参数,响应正确反序列化。</li>
  *   <li>/FLR 端点 URL 含 startDate、endDate、api_key 参数,响应正确反序列化。</li>
- *   <li>NASA ISO 8601 时间字符串(带 Z 后缀)正确解析为 LocalDateTime。</li>
+ *   <li>NASA ISO 8601 时间字符串(带 Z 后缀)正确解析为 OffsetDateTime。</li>
  *   <li>并行调用 + 合并结果:DonkiResponse.gstEvents 与 flrEvents 字段填充正确。</li>
  *   <li>缓存命中:第二次调用 getAuroraForecast 不再发 HTTP 请求。</li>
  *   <li>空数组响应(null/[])兜底为空列表。</li>
@@ -58,7 +59,7 @@ class NasaDonkiClientTest {
      * /GST 端点:返回 2 条地磁暴事件,验证字段映射与时间解析。
      *
      * <p>NASA 时间格式 "2026-06-15T18:30:00Z"(带 Z 后缀,UTC)。
-     * 通过 @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss['Z']") 解析为 LocalDateTime。</p>
+     * 用 OffsetDateTime 接收,Jackson 默认 ISO_OFFSET_DATE_TIME 解析器原生支持。</p>
      */
     @Test
     void fetchGstEvents_returnsParsedStorms_withZTimestampParsing() {
@@ -82,11 +83,11 @@ class NasaDonkiClientTest {
 
         assertThat(storms).hasSize(2);
         assertThat(storms.get(0).activityID()).isEqualTo("2026-06-15T18:30:00-GST-001");
-        // 关键:NASA "Z" 后缀正确解析为 LocalDateTime(UTC 时间值)
+        // 关键:NASA "Z" 后缀正确解析为 OffsetDateTime(UTC)
         assertThat(storms.get(0).startTime()).isEqualTo(
-                LocalDateTime.of(2026, 6, 15, 18, 30, 0));
+                OffsetDateTime.of(2026, 6, 15, 18, 30, 0, 0, ZoneOffset.UTC));
         assertThat(storms.get(0).observedTime()).isEqualTo(
-                LocalDateTime.of(2026, 6, 15, 20, 0, 0));
+                OffsetDateTime.of(2026, 6, 15, 20, 0, 0, 0, ZoneOffset.UTC));
         assertThat(storms.get(0).link()).contains("/DONKI/view/GST/001");
         mockServer.verify();
     }
@@ -114,7 +115,7 @@ class NasaDonkiClientTest {
         assertThat(flares.get(0).flareID()).isEqualTo("2026-06-15T18:30:00-FLR-001");
         assertThat(flares.get(0).classType()).isEqualTo("X1.5");
         assertThat(flares.get(0).peakTime()).isEqualTo(
-                LocalDateTime.of(2026, 6, 15, 19, 0, 0));
+                OffsetDateTime.of(2026, 6, 15, 19, 0, 0, 0, ZoneOffset.UTC));
         mockServer.verify();
     }
 
@@ -152,6 +153,38 @@ class NasaDonkiClientTest {
         assertThat(response.gstEvents().get(0).activityID()).isEqualTo("2026-06-15T18:30:00-GST-001");
         assertThat(response.flrEvents()).hasSize(1);
         assertThat(response.flrEvents().get(0).classType()).isEqualTo("M3.2");
+        mockServer.verify();
+    }
+
+    /**
+     * 回归测试:NASA 实际返回的时间格式可能无秒段,形如 "2026-07-04T00:00Z"。
+     *
+     * <p>此前用 LocalDateTime + @JsonFormat(pattern="yyyy-MM-dd'T'HH:mm:ss['Z']")
+     * 解析时,因强制秒段或 pattern 方括号内引号误用,抛出
+     * DateTimeParseException: Text '2026-07-04T00:00Z' could not be parsed。
+     * 改用 OffsetDateTime 后,Jackson 默认 ISO_OFFSET_DATE_TIME 解析器原生
+     * 支持带/不带秒两种格式,此用例验证修复不再回归。</p>
+     */
+    @Test
+    void fetchGstEvents_nasaRealWorldTimestampWithoutSeconds_parsesSuccessfully() {
+        // NASA 真实响应片段(2026-07-04 地磁暴,无秒段)
+        String json = "["
+                + "{\"activityID\":\"2026-07-04T00:00:00-GST-001\","
+                + "\"startTime\":\"2026-07-04T00:00Z\","
+                + "\"link\":\"https://kauai.ccmc.gsfc.nasa.gov/DONKI/view/GST/47312\"}"
+                + "]";
+        mockServer.expect(requestTo(org.hamcrest.Matchers.containsString("/GST")))
+                .andRespond(withSuccess(json, MediaType.APPLICATION_JSON));
+
+        List<GeomagneticStorm> storms = client.fetchGstEventsForTest(
+                LocalDate.of(2026, 6, 7), LocalDate.of(2026, 7, 7));
+
+        assertThat(storms).hasSize(1);
+        // 无秒格式 "2026-07-04T00:00Z" 解析为 OffsetDateTime(UTC 00:00:00)
+        assertThat(storms.get(0).startTime())
+                .isEqualTo(OffsetDateTime.of(2026, 7, 4, 0, 0, 0, 0, ZoneOffset.UTC));
+        // observedTime 未返回 → null(NASA GST 顶层无此字段,嵌套在 allKpIndex 中)
+        assertThat(storms.get(0).observedTime()).isNull();
         mockServer.verify();
     }
 

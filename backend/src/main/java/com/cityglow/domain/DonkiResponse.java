@@ -1,10 +1,9 @@
 package com.cityglow.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
@@ -27,6 +26,11 @@ import java.util.List;
  * <p>用 {@link JsonProperty} 显式映射 NASA 字段名到 record 组件。
  * {@link JsonIgnoreProperties}(ignoreUnknown = true)忽略未识别字段,
  * 保证 NASA 加新字段不破坏反序列化。</p>
+ *
+ * <p><b>时间字段类型</b>:NASA 返回 ISO 8601 带时区标记 {@code Z}(UTC)的时间字符串,
+ * 形如 {@code 2026-07-04T00:00Z}(无秒)或 {@code 2026-07-04T03:03:00Z}(有秒)。
+ * 使用 {@link OffsetDateTime} 而非 LocalDateTime,Jackson 默认 ISO_OFFSET_DATE_TIME
+ * 解析器原生支持这两种格式,无需自定义 pattern,避免 DateTimeParseException。</p>
  *
  * <p>顶层字段用 {@code Optional} 风格的 null 兜底:NASA 偶发返回 null 列表时
  * 通过构造器规范化为空列表,避免 NPE。</p>
@@ -55,17 +59,16 @@ public record DonkiResponse(
      * 强地磁暴(Kp ≥ 7)可在中低纬度引发极光,CityGlow 据此推荐极光观测。</p>
      *
      * @param activityID   事件唯一 ID(NASA 内部标识)
-     * @param startTime    事件开始时间(UTC)
-     * @param observedTime 观测时间(UTC)
+     * @param startTime    事件开始时间(UTC,带 Z 后缀)
+     * @param observedTime 观测时间(UTC,带 Z 后缀;NASA GST 顶层可能不返回此字段,
+     *                     实际观测时间嵌套在 allKpIndex 数组中,此字段可能为 null)
      * @param link         NASA DONKI 详情页链接
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record GeomagneticStorm(
             @JsonProperty("activityID") String activityID,
-            @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm[:ss]['Z']", timezone = "UTC")
-            @JsonProperty("startTime") LocalDateTime startTime,
-            @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm[:ss]['Z']", timezone = "UTC")
-            @JsonProperty("observedTime") LocalDateTime observedTime,
+            @JsonProperty("startTime") OffsetDateTime startTime,
+            @JsonProperty("observedTime") OffsetDateTime observedTime,
             @JsonProperty("link") String link
     ) {
     }
@@ -78,15 +81,14 @@ public record DonkiResponse(
      *
      * @param flareID   耀斑唯一 ID
      * @param classType 耀斑级别(如 "X1.5"、"M3.2"、"C5.0")
-     * @param peakTime  峰值时间(UTC)
+     * @param peakTime  峰值时间(UTC,带 Z 后缀)
      * @param link      NASA DONKI 详情页链接
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record SolarFlare(
             @JsonProperty("flareID") String flareID,
             @JsonProperty("classType") String classType,
-            @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm[:ss]['Z']", timezone = "UTC")
-            @JsonProperty("peakTime") LocalDateTime peakTime,
+            @JsonProperty("peakTime") OffsetDateTime peakTime,
             @JsonProperty("link") String link
     ) {
     }
