@@ -4,10 +4,6 @@ import com.cityglow.domain.PostcardResult;
 import com.cityglow.domain.WatermarkInfo;
 import com.cityglow.util.BortleEstimator;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import javax.imageio.ImageIO;
 import java.awt.Color;
@@ -21,9 +17,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * PostcardService 单元测试。
  *
- * <p>月相由 {@link com.cityglow.util.MoonPhaseCalculator} 根据当前日期计算,
- * 不再 mock {@link OpenWeatherClient}(无需调 OpenWeather One Call API)。
- * 验证:</p>
+ * <p>PostcardService 不再依赖任何外部 API client(月相用天文算法本地计算),
+ * 无需 mock。验证:</p>
  * <ul>
  *   <li>decodeAndCompress:大图缩放到长边 1920,小图保持原样</li>
  *   <li>drawWatermark:在右下角绘制可见水印文字</li>
@@ -31,14 +26,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *   <li>generate 失败路径:非法图片字节 → ShutdownOnFailure 抛 RuntimeException</li>
  * </ul>
  */
-@ExtendWith(MockitoExtension.class)
 class PostcardServiceTest {
 
-    @Mock
-    private OpenWeatherClient openWeatherClient;  // 保留 mock 占位(PostcardService 构造注入,但不再调用)
-
-    @InjectMocks
-    private PostcardService postcardService;
+    private final PostcardService postcardService = new PostcardService();
 
     @Test
     void decodeAndCompress_largeImage_scaledTo1920() throws IOException {
@@ -88,10 +78,6 @@ class PostcardServiceTest {
                 .isTrue();
     }
 
-    /**
-     * 全流程:传入小图 JPEG 字节,验证 PostcardResult 含非空 JPEG 字节与正确水印元数据。
-     * 月相由天文算法计算,无法断言具体值,但应是非空字符串。
-     */
     @Test
     void generate_returnsPostcardResultWithWatermark() throws IOException {
         double lat = 39.9;

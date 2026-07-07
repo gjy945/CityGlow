@@ -27,6 +27,8 @@
 | Node.js | 18+ | https://nodejs.org/ |
 | IntelliJ IDEA | Ultimate 或 Community + Spring Boot 插件 | https://www.jetbrains.com/idea/ |
 
+> **注**:气象数据使用 Open-Meteo(https://open-meteo.com/),**免费开源、无需 API Key、无速率限制**,因此环境准备中不需要申请气象 API Key。
+
 ### 1.2 验证环境
 
 打开 PowerShell(或终端),逐条执行:
@@ -85,14 +87,16 @@ MYSQL_PORT=3306
 MYSQL_USER=root
 MYSQL_PASSWORD=你的MySQL密码       # ← 改这里,例如 123456
 
-# OpenWeatherMap API Key
-OPENWEATHER_API_KEY=你的key        # ← 已提供:OPENWEATHER_API_KEY_REMOVED
+# 气象数据:Open-Meteo(免费开源,无需 API Key,无需配置)
+# 文档: https://open-meteo.com/
 
-# NASA APOD API Key
+# NASA APOD API Key(申请: https://api.nasa.gov/)
 NASA_APOD_API_KEY=你的key          # ← 已提供:INoZW4trwlgvV9sKjpD4DpzWGV3GOkw5Xz0IjFCe
 ```
 
 > ⚠️ `.env` 文件已被 `.gitignore` 排除,不会提交到 git,可安全存放密钥。
+>
+> 💡 **Open-Meteo 无需 API Key**,气象数据调用直接生效,无需任何配置。
 
 **第 3 步:确认 MySQL 已启动**
 
@@ -297,8 +301,9 @@ VITE v8.x  ready in xxx ms
 
 **终极方案**:在 IDEA 运行配置 → Environment variables 直接填:
 ```
-MYSQL_PASSWORD=你的密码;OPENWEATHER_API_KEY=OPENWEATHER_API_KEY_REMOVED;NASA_APOD_API_KEY=INoZW4trwlgvV9sKjpD4DpzWGV3GOkw5Xz0IjFCe
+MYSQL_PASSWORD=你的密码;NASA_APOD_API_KEY=INoZW4trwlgvV9sKjpD4DpzWGV3GOkw5Xz0IjFCe
 ```
+(注:Open-Meteo 无需 API Key,无需配置)
 
 ### 5.2 后端报 `spring-boot-buildpack-platform` 下载失败
 
@@ -331,12 +336,12 @@ mvn spring-boot:run -U
 
 ### 5.5 点击地图没反应 / 报错
 
-**原因**:OpenWeather API 调用失败(Key 错误 / 网络 / 超额)。
+**原因**:Open-Meteo API 调用失败(网络问题 / 服务端故障)。
 
 **排查**:
-- 后端控制台看是否有 `401 Invalid API key` 或 `429 Too Many Requests`
-- 免费版 OpenWeather 每分钟 60 次,超额需等
-- 确认 `.env` 中 `OPENWEATHER_API_KEY` 正确
+- 后端控制台看是否有连接超时或 HTTP 错误
+- Open-Meteo 是免费服务,偶有波动,重试即可
+- 确认网络能访问 `https://api.open-meteo.com/`(浏览器打开测试)
 
 ### 5.6 首页 APOD 缩略图不显示
 

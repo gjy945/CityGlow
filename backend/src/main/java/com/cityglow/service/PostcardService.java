@@ -6,7 +6,6 @@ import com.cityglow.util.BortleEstimator;
 import com.cityglow.util.MoonPhaseCalculator;
 import com.cityglow.util.MoonPhaseDescription;
 import org.springframework.stereotype.Service;
-
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageWriteParam;
@@ -36,7 +35,7 @@ import java.util.concurrent.StructuredTaskScope;
  * (画水印 + 编码 JPEG),返回 {@link PostcardResult}。</p>
  *
  * <p><b>并行点设计</b>:真正的并行机会在于"图片解码压缩"(CPU/IO 密集)
- * 与"水印元数据准备"(需调 OpenWeather 取月相,涉及外部网络往返)
+ * 与"水印元数据准备"(查 Bortle 等级 + 算月相,本地计算)
  * 互不依赖,可同时进行。画水印依赖前两者结果,故放在 join 后串行执行。</p>
  *
  * <pre>
@@ -65,12 +64,6 @@ public class PostcardService {
     static final int MAX_LONG_EDGE = 1920;
     /** JPEG 编码质量(0-1)。 */
     static final float JPEG_QUALITY = 0.85f;
-
-    private final OpenWeatherClient openWeatherClient;
-
-    public PostcardService(OpenWeatherClient openWeatherClient) {
-        this.openWeatherClient = openWeatherClient;
-    }
 
     /**
      * 生成星空明信片:并行(解码压缩 + 水印元数据)→ 串行(画水印 + 编码)。

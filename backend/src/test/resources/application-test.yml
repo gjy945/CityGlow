@@ -14,11 +14,8 @@ spring:
       hibernate:
         format_sql: false
 
-# 测试中显式置空 API Key,避免真实 Key 进入测试上下文
-openweather:
-  api:
-    key: ""
-
+# 测试中显式置空 NASA API Key,避免真实 Key 进入测试上下文
+# 注:Open-Meteo 无需 API Key
 nasa:
   apod:
     key: ""
