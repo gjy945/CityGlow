@@ -6,6 +6,11 @@ spring:
     virtual:
       enabled: true   # JDK 21 虚拟线程开关
 
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 12MB
+
   datasource:
     # 本地开发默认值;生产用环境变量覆盖
     url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/cityglow?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
