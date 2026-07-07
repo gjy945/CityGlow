@@ -111,6 +111,7 @@ onMounted(() => {
     <DarkSkyLeaflet
       ref="mapRef"
       :markers="markers"
+      class="map-fade-in"
       @map-click="handleClick"
       @ready="handleReady"
       @marker-click="handleMarkerClick"
@@ -118,7 +119,7 @@ onMounted(() => {
 
     <!-- 左上:定位按钮 -->
     <button
-      class="map-btn map-btn--locate glass-panel"
+      class="map-btn map-btn--locate glass-panel fade-in-delay-1"
       :class="{ 'is-busy': locating }"
       :disabled="locating"
       @click="locate"
@@ -188,7 +189,7 @@ onMounted(() => {
     </div>
 
     <!-- 右下:章节标识 -->
-    <div class="map-info map-info--section glass-panel">
+    <div class="map-info map-info--section glass-panel fade-in-delay-2">
       <p class="font-mono text-[9px] uppercase tracking-[0.25em] text-dark-gold/80">
         section 01
       </p>
@@ -280,6 +281,18 @@ onMounted(() => {
 </template>
 
 <style scoped>
+/* 地图容器淡入 */
+.map-fade-in {
+  animation: mapFadeIn 1s ease-out both;
+}
+@keyframes mapFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-fade-in { animation: none; }
+}
+
 /* 通用按钮 */
 .map-btn {
   position: absolute;

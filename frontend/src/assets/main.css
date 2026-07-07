@@ -48,6 +48,30 @@ body {
   text-shadow: 0 0 10px rgba(232, 234, 246, 0.5);
 }
 
+/* 全局淡入动画:用于页面与地图容器首次加载 */
+.fade-in {
+  animation: fadeIn 1s ease-out both;
+}
+.fade-in-delay-1 {
+  animation: fadeIn 1s ease-out 0.15s both;
+}
+.fade-in-delay-2 {
+  animation: fadeIn 1s ease-out 0.3s both;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 尊重用户偏好:减少动效 */
+@media (prefers-reduced-motion: reduce) {
+  .fade-in,
+  .fade-in-delay-1,
+  .fade-in-delay-2 {
+    animation: none;
+  }
+}
+
 /* Leaflet 暗色主题覆盖:让 popup / zoom 控件融入深空配色 */
 .leaflet-popup-content-wrapper {
   background: rgba(26, 31, 58, 0.92);

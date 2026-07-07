@@ -29,7 +29,7 @@ spring:
 server:
   port: 8080
 
-# 第三方 API Key:严禁硬编码,必须从环境变量或 .env 注入(见 backend/.env.example)
+# 第三方 API Key:严禁硬编码,必须从环境变量或 .env 注入(见 backend/.env)
 openweather:
   api:
     key: ${OPENWEATHER_API_KEY:}
