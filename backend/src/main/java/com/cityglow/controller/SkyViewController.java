@@ -60,10 +60,10 @@ public class SkyViewController {
      * @param lng  经度
      * @param date 日期(YYYY-MM-DD,默认今天)
      * @param hour 小时(0-23,默认 22 即晚上 10 点)
-     * @return SkyViewResult
+     * @return ApiResponse 包装的 SkyViewResult(符合项目规范,前端拦截器自动解包)
      */
     @GetMapping("/constellation-view")
-    public ResponseEntity<SkyViewResult> getSkyView(
+    public ApiResponse<SkyViewResult> getSkyView(
             @RequestParam double lat,
             @RequestParam double lng,
             @RequestParam(name = "date", required = false) String date,
@@ -76,7 +76,7 @@ public class SkyViewController {
         String cacheKey = formatKey(lat, lng, parsedDate, safeHour);
         SkyViewResult result = skyViewCache.get(cacheKey, k ->
                 buildSkyView(lat, lng, parsedDate, safeHour));
-        return ResponseEntity.ok(result);
+        return ApiResponse.success(result);
     }
 
     /**
