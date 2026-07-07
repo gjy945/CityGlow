@@ -63,8 +63,6 @@ public class SecurityConfig {
                             .requestMatchers(HttpMethod.POST, "/api/v1/auth/**").permitAll()
                             .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                             .requestMatchers(HttpMethod.GET, "/api/v1/logs/**").permitAll()
-                            // 近地小行星:公开接口,无需认证
-                            .requestMatchers(HttpMethod.GET, "/api/v1/neo/**").permitAll()
                             .requestMatchers("/api/v1/**").authenticated()
                             .anyRequest().permitAll()
                     )

@@ -3,7 +3,6 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useEventsStore } from '../stores/events'
 import type { AstroEvent } from '../api/events'
-import NeoWidget from '../components/NeoWidget.vue'
 
 const { t, locale } = useI18n()
 const eventsStore = useEventsStore()
@@ -26,30 +25,6 @@ const sortedEvents = computed(() =>
   [...eventsStore.list].sort(
     (a, b) => new Date(a.eventTime).getTime() - new Date(b.eventTime).getTime(),
   ),
-)
-
-// 事件类型筛选(默认全选)
-type EventType = 'METEOR' | 'ECLIPSE' | 'PLANET' | 'AURORA' | 'NEO'
-const filterTypes: EventType[] = ['METEOR', 'ECLIPSE', 'PLANET', 'AURORA', 'NEO']
-const enabledFilters = ref<Set<EventType>>(new Set(filterTypes))
-
-function toggleFilter(type: EventType) {
-  const next = new Set(enabledFilters.value)
-  if (next.has(type)) {
-    // 至少保留一个,避免全空
-    if (next.size > 1) next.delete(type)
-  } else {
-    next.add(type)
-  }
-  enabledFilters.value = next
-}
-
-function selectAllFilters() {
-  enabledFilters.value = new Set(filterTypes)
-}
-
-const filteredEvents = computed(() =>
-  sortedEvents.value.filter((e) => enabledFilters.value.has(e.eventType as EventType)),
 )
 
 const nextEvent = computed(() => {
@@ -284,38 +259,9 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- 事件类型筛选栏 -->
-      <div v-if="sortedEvents.length" class="filter-bar">
-        <p class="filter-title font-mono">{{ t('timeline.filter.title') }}</p>
-        <div class="filter-tags">
-          <button
-            type="button"
-            class="filter-tag"
-            :class="{ 'filter-tag--active': enabledFilters.size === filterTypes.length }"
-            @click="selectAllFilters"
-          >
-            {{ t('timeline.filter.all') }}
-          </button>
-          <button
-            v-for="tp in filterTypes"
-            :key="tp"
-            type="button"
-            class="filter-tag"
-            :class="[
-              `filter-tag--${tp.toLowerCase()}`,
-              { 'filter-tag--active': enabledFilters.has(tp) },
-            ]"
-            :style="{ '--tag-color': typeOf(tp).color }"
-            @click="toggleFilter(tp)"
-          >
-            {{ typeOf(tp).label }}
-          </button>
-        </div>
-      </div>
-
       <!-- 时间轴 -->
       <div
-        v-if="filteredEvents.length"
+        v-if="sortedEvents.length"
         ref="scrollEl"
         class="timeline-scroll"
         @wheel="onWheel"
@@ -326,7 +272,7 @@ onMounted(() => {
             <span class="line-cap line-cap--right"></span>
           </div>
           <article
-            v-for="event in filteredEvents"
+            v-for="event in sortedEvents"
             :key="event.id"
             class="timeline-item"
             :class="[typeClass(event.eventType), { 'timeline-item--next': isNext(event) }]"
@@ -410,14 +356,9 @@ onMounted(() => {
       </div>
 
       <!-- 滚动提示 -->
-      <p v-if="filteredEvents.length" class="scroll-hint font-mono">
+      <p v-if="sortedEvents.length" class="scroll-hint font-mono">
         {{ t('timeline.scrollHint') }}
       </p>
-
-      <!-- 近地天体区块(时间轴下方) -->
-      <div class="neo-section">
-        <NeoWidget :days="7" :top-n="5" />
-      </div>
     </div>
 
     <!-- 详情 Modal -->
@@ -636,63 +577,6 @@ onMounted(() => {
   padding-bottom: 4px;
 }
 
-/* 事件类型筛选栏 */
-.filter-bar {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 32px;
-}
-.filter-title {
-  font-size: 10px;
-  letter-spacing: 0.32em;
-  text-transform: uppercase;
-  color: rgba(197, 165, 114, 0.7);
-}
-.filter-tags {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-}
-.filter-tag {
-  font-family: 'Manrope', sans-serif;
-  font-size: 11px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  padding: 6px 14px;
-  border-radius: 999px;
-  background: rgba(10, 14, 26, 0.4);
-  border: 1px solid rgba(197, 165, 114, 0.3);
-  color: rgba(232, 234, 246, 0.6);
-  cursor: pointer;
-  transition: all 0.24s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.filter-tag:hover {
-  color: var(--tag-color, #c5a572);
-  border-color: rgba(197, 165, 114, 0.55);
-  background: rgba(197, 165, 114, 0.08);
-}
-.filter-tag--active {
-  color: #0a0e1a;
-  background: var(--tag-color, #c5a572);
-  border-color: var(--tag-color, #c5a572);
-  box-shadow: 0 0 14px color-mix(in srgb, var(--tag-color, #c5a572) 45%, transparent);
-}
-/* 当类型颜色与背景对比不足时(如 PLANET #e8eaf6 / AURORA #4ade80),仍可读 */
-.filter-tag--planet.filter-tag--active,
-.filter-tag--aurora.filter-tag--active {
-  color: #0a0e1a;
-}
-
-/* 近地天体区块 */
-.neo-section {
-  margin-top: 56px;
-  max-width: 720px;
-  margin-left: auto;
-  margin-right: auto;
-}
 
 /* 时间轴滚动 */
 .timeline-scroll {
