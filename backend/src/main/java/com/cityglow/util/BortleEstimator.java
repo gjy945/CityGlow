@@ -1,5 +1,7 @@
 package com.cityglow.util;
 
+import java.util.Locale;
+
 /**
  * Bortle 暗空等级估算工具类(简化版)。
  *
@@ -38,6 +40,26 @@ public final class BortleEstimator {
         }
         // 默认:中等光污染(郊区边缘)
         return 5;
+    }
+
+    /**
+     * 根据 Bortle 等级与 Locale 返回对应语言的人类可读描述。
+     *
+     * <p>档位:</p>
+     * <ul>
+     *   <li>1 → 极佳暗空 / Excellent dark sky / 素晴らしい暗夜</li>
+     *   <li>2-3 → 暗空良好 / Good dark sky / 良好な暗夜</li>
+     *   <li>4-5 → 郊区天空 / Suburban sky / 郊外の空</li>
+     *   <li>6-7 → 郊区 / Bright suburban / 明るい郊外</li>
+     *   <li>8-9 → 城市 / City sky / 都市の空</li>
+     * </ul>
+     *
+     * @param bortleLevel Bortle 等级 1-9
+     * @param locale      语言(zh/en/ja,其他回退到 zh)
+     * @return Bortle 描述
+     */
+    public static String getDescription(int bortleLevel, Locale locale) {
+        return Messages.bortleDescription(bortleLevel, locale);
     }
 
     /**

@@ -15,31 +15,34 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 /**
- * 用户实体,对应 users 表。
+ * 收藏观测点实体,对应 favorite_locations 表。
+ *
+ * <p>用户收藏的观测地点(经纬度 + 名称),同一用户下经纬度唯一(幂等)。</p>
  */
 @Entity
-@Table(name = "users")
+@Table(name = "favorite_locations")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class User {
+public class FavoriteLocation {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 50)
-    private String username;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
-    /**
-     * 密码字段:存 BCrypt 哈希(由 AuthService 在注册/登录时填充),不存明文。
-     */
+    /** 地点名称(用户自定义,如"北京灵山")。 */
     @Column(nullable = false, length = 100)
-    private String password;
+    private String name;
 
-    @Column(name = "avatar_url")
-    private String avatarUrl;
+    @Column(nullable = false)
+    private double latitude;
+
+    @Column(nullable = false)
+    private double longitude;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

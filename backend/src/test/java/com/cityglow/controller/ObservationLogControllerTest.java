@@ -5,9 +5,12 @@ import com.cityglow.domain.PostcardResult;
 import com.cityglow.domain.WatermarkInfo;
 import com.cityglow.entity.ObservationLog;
 import com.cityglow.repository.ObservationLogRepository;
+import com.cityglow.repository.UserRepository;
 import com.cityglow.service.PostcardService;
+import com.cityglow.util.JwtUtil;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Sort;
@@ -45,6 +48,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * </ul>
  */
 @WebMvcTest(ObservationLogController.class)
+@AutoConfigureMockMvc(addFilters = false)
 @TestPropertySource(properties = "app.upload.dir=target/test-uploads")
 class ObservationLogControllerTest {
 
@@ -56,6 +60,14 @@ class ObservationLogControllerTest {
 
     @MockBean
     private ObservationLogRepository logRepository;
+
+    // 以下两个 @MockBean 仅为满足 JwtAuthenticationFilter 自动装配
+    // (Filter 在 @WebMvcTest 中被扫描,但 JwtUtil/UserRepository 不在切片内)
+    @MockBean
+    private JwtUtil jwtUtil;
+
+    @MockBean
+    private UserRepository userRepository;
 
     /**
      * 合法 JPEG 上传 → 200,返回 logId 与 cardUrl。

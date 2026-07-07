@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import DarkSkyLeaflet, { type MapMarker } from '../components/DarkSkyLeaflet.vue'
 import ForecastPanel from './ForecastPanel.vue'
 import { useEventsStore } from '../stores/events'
 import { useApodStore } from '../stores/apod'
+
+const { t } = useI18n()
 
 const eventsStore = useEventsStore()
 const apodStore = useApodStore()
@@ -123,8 +126,8 @@ onMounted(() => {
       :class="{ 'is-busy': locating }"
       :disabled="locating"
       @click="locate"
-      aria-label="定位到当前位置"
-      title="定位到当前位置"
+      :aria-label="t('map.locate')"
+      :title="t('map.locate')"
     >
       <svg
         v-if="!locating"
@@ -150,7 +153,7 @@ onMounted(() => {
       :class="{ 'is-image': apod.media_type === 'image' }"
       @click="apodModalOpen = true"
       :title="apod.title"
-      aria-label="查看今日天文一图"
+      :aria-label="t('map.viewApod')"
     >
       <img
         v-if="apod.media_type === 'image'"
@@ -181,7 +184,7 @@ onMounted(() => {
       class="map-info map-info--coords glass-panel"
     >
       <p class="font-mono text-[9px] uppercase tracking-[0.25em] text-dark-gold/80">
-        last click
+        {{ t('map.lastClick') }}
       </p>
       <p class="font-mono text-xs text-moonlight/85 mt-1">
         lat {{ lastClick.lat.toFixed(4) }} · lng {{ lastClick.lng.toFixed(4) }}
@@ -191,11 +194,11 @@ onMounted(() => {
     <!-- 右下:章节标识 -->
     <div class="map-info map-info--section glass-panel fade-in-delay-2">
       <p class="font-mono text-[9px] uppercase tracking-[0.25em] text-dark-gold/80">
-        section 01
+        {{ t('map.section') }}
       </p>
-      <p class="font-display text-base text-starlight mt-1">暗夜地图 · Dark Sky Map</p>
+      <p class="font-display text-base text-starlight mt-1">{{ t('map.title') }}</p>
       <p class="font-body text-[10px] text-moonlight/50 mt-1.5 max-w-[200px] leading-snug">
-        点击地图任意位置以获取观星预报
+        {{ t('map.subtitle') }}
       </p>
     </div>
 
@@ -206,7 +209,7 @@ onMounted(() => {
     >
       <div class="spinner spinner--sm" />
       <span class="font-mono text-[10px] text-moonlight/70 tracking-wider">
-        加载天文事件…
+        {{ t('map.loadingEvents') }}
       </span>
     </div>
 
@@ -234,7 +237,7 @@ onMounted(() => {
             <button
               class="apod-modal-close"
               @click="apodModalOpen = false"
-              aria-label="关闭"
+              :aria-label="t('common.close')"
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path

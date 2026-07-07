@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useLogsStore } from '../stores/logs'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const logsStore = useLogsStore()
@@ -33,7 +35,7 @@ const detailLoading = computed(
 )
 const detailError = computed(() => {
   if (detailId.value != null && !logsStore.loading && !detail.value) {
-    return logsStore.error || '该明信片不存在或已被取下'
+    return logsStore.error || t('postcard.notFoundHint')
   }
   return null
 })
@@ -52,7 +54,7 @@ const fileInput = ref<HTMLInputElement | null>(null)
 
 function selectFile(f: File) {
   if (!['image/jpeg', 'image/png'].includes(f.type)) {
-    formError.value = '仅支持 JPEG / PNG 格式图片'
+    formError.value = t('postcard.errors.unsupportedFormat')
     return
   }
   file.value = f
@@ -87,7 +89,7 @@ function clearFile() {
 
 function locate() {
   if (!navigator.geolocation) {
-    formError.value = '当前浏览器不支持地理定位'
+    formError.value = t('postcard.errors.noGeolocation')
     return
   }
   locating.value = true
@@ -99,7 +101,7 @@ function locate() {
       formError.value = null
     },
     () => {
-      formError.value = '定位失败,请手动输入经纬度'
+      formError.value = t('postcard.errors.locateFailed')
       locating.value = false
     },
     { enableHighAccuracy: true, timeout: 10000 },
@@ -109,17 +111,17 @@ function locate() {
 async function submit() {
   formError.value = null
   if (!file.value) {
-    formError.value = '请选择一张星空照片'
+    formError.value = t('postcard.errors.noFile')
     return
   }
   const latNum = Number(lat.value)
   const lngNum = Number(lng.value)
   if (!Number.isFinite(latNum) || latNum < -90 || latNum > 90) {
-    formError.value = '纬度需在 -90 至 90 之间'
+    formError.value = t('postcard.errors.latRange')
     return
   }
   if (!Number.isFinite(lngNum) || lngNum < -180 || lngNum > 180) {
-    formError.value = '经度需在 -180 至 180 之间'
+    formError.value = t('postcard.errors.lngRange')
     return
   }
   try {
@@ -133,7 +135,7 @@ async function submit() {
     if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
     router.push(`/postcard/${result.logId}`)
   } catch (e) {
-    formError.value = (e as Error).message || '上传失败,请稍后再试'
+    formError.value = (e as Error).message || t('postcard.errors.uploadFailed')
   }
 }
 
@@ -179,11 +181,11 @@ function bortleColor(level: number | null): string {
 }
 
 function bortleLabel(level: number | null): string {
-  if (level == null) return '未评级'
-  if (level <= 2) return '极暗夜空'
-  if (level <= 4) return '良好暗夜'
-  if (level <= 6) return '中等光污染'
-  return '严重光污染'
+  if (level == null) return t('postcard.bortleLabels.unrated')
+  if (level <= 2) return t('postcard.bortleLabels.excellent')
+  if (level <= 4) return t('postcard.bortleLabels.good')
+  if (level <= 6) return t('postcard.bortleLabels.moderate')
+  return t('postcard.bortleLabels.severe')
 }
 </script>
 
@@ -217,23 +219,23 @@ function bortleLabel(level: number | null): string {
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M9 2 L4 7 L9 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
-          返回画廊
+          {{ t('postcard.backToGallery') }}
         </button>
 
         <!-- 加载中 -->
         <div v-if="detailLoading" class="detail-state">
           <div class="spinner"></div>
           <p class="font-mono text-xs text-moonlight/60 mt-4 tracking-wider">
-            取回明信片中…
+            {{ t('postcard.retrieving') }}
           </p>
         </div>
 
         <!-- 错误 -->
         <div v-else-if="detailError" class="detail-state">
-          <p class="font-display text-2xl text-starlight/70">明信片遗失</p>
+          <p class="font-display text-2xl text-starlight/70">{{ t('postcard.notFound') }}</p>
           <p class="font-mono text-[10px] text-moonlight/50 mt-3">{{ detailError }}</p>
           <button class="back-link back-link--cta mt-6" @click="router.push('/postcard')">
-            返回画廊
+            {{ t('postcard.backToGallery') }}
           </button>
         </div>
 
@@ -255,14 +257,14 @@ function bortleLabel(level: number | null): string {
               <img
                 v-if="detail.imageUrl"
                 :src="detail.imageUrl"
-                :alt="detail.locationName || '星空明信片'"
+                :alt="detail.locationName || t('postcard.unnamed')"
               />
               <div v-else class="postcard-photo-empty">
                 <svg viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1">
                   <circle cx="24" cy="24" r="17" />
                   <path d="M17 24 L24 31 L31 17" stroke-linecap="round" stroke-linejoin="round" />
                 </svg>
-                <p class="font-mono text-[10px] text-moonlight/40 mt-2">无图像</p>
+                <p class="font-mono text-[10px] text-moonlight/40 mt-2">{{ t('postcard.noImage') }}</p>
               </div>
             </div>
 
@@ -293,24 +295,24 @@ function bortleLabel(level: number | null): string {
             <div class="postcard-caption">
               <p class="caption-tag font-mono">Starry Postcard · No.{{ detail.id }}</p>
               <h2 class="caption-place font-display starlight-text">
-                {{ detail.locationName || '无名星野' }}
+                {{ detail.locationName || t('postcard.unnamed') }}
               </h2>
               <div class="caption-meta">
                 <div class="meta-row">
-                  <span class="meta-label">坐标</span>
+                  <span class="meta-label">{{ t('postcard.coord') }}</span>
                   <span class="meta-value font-mono">
                     {{ formatCoord(detail.latitude, 'N') }} · {{ formatCoord(detail.longitude, 'E') }}
                   </span>
                 </div>
                 <div class="meta-row">
-                  <span class="meta-label">Bortle</span>
+                  <span class="meta-label">{{ t('postcard.bortle') }}</span>
                   <span class="meta-value font-mono" :style="{ color: bortleColor(detail.bortleLevel) }">
-                    {{ detail.bortleLevel ?? '--' }} 级
+                    {{ detail.bortleLevel ?? '--' }} {{ t('common.levelUnit') }}
                     <span class="meta-sub">{{ bortleLabel(detail.bortleLevel) }}</span>
                   </span>
                 </div>
                 <div class="meta-row">
-                  <span class="meta-label">时刻</span>
+                  <span class="meta-label">{{ t('postcard.moment') }}</span>
                   <span class="meta-value font-mono">{{ formatDateTime(detail.createdAt) }}</span>
                 </div>
               </div>
@@ -325,9 +327,9 @@ function bortleLabel(level: number | null): string {
       <!-- ════════════ 上传 + 画廊模式 ════════════ -->
       <template v-else>
         <header class="page-header">
-          <p class="section-tag">Section 04 · Starry Postcard</p>
-          <h1 class="page-title font-display starlight-text">星空打卡</h1>
-          <p class="page-sub">记录每一片你曾仰望的暗夜</p>
+          <p class="section-tag">{{ t('postcard.sectionTag') }}</p>
+          <h1 class="page-title font-display starlight-text">{{ t('postcard.title') }}</h1>
+          <p class="page-sub">{{ t('postcard.subtitle') }}</p>
         </header>
 
         <!-- 上传表单 -->
@@ -353,13 +355,13 @@ function bortleLabel(level: number | null): string {
                 <circle cx="24" cy="24" r="18" />
                 <path d="M24 16 V32 M16 24 H32" />
               </svg>
-              <p class="dz-title font-display">上传星空照片</p>
-              <p class="dz-hint font-mono">点击选择 · 拖拽至此</p>
-              <p class="dz-formats font-mono">JPEG / PNG</p>
+              <p class="dz-title font-display">{{ t('postcard.uploadPhoto') }}</p>
+              <p class="dz-hint font-mono">{{ t('postcard.dropHint') }}</p>
+              <p class="dz-formats font-mono">{{ t('postcard.formats') }}</p>
             </div>
             <div v-else class="dropzone-preview">
-              <img :src="previewUrl" alt="预览" />
-              <button class="dz-clear" @click.stop="clearFile" aria-label="移除图片">
+              <img :src="previewUrl" :alt="t('postcard.preview')" />
+              <button class="dz-clear" @click.stop="clearFile" :aria-label="t('postcard.removeImage')">
                 <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
                   <path d="M2 2 L12 12 M12 2 L2 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
                 </svg>
@@ -370,22 +372,22 @@ function bortleLabel(level: number | null): string {
 
           <!-- 表单字段 -->
           <div class="form-panel glass-panel">
-            <p class="form-tag font-mono">观测信息</p>
+            <p class="form-tag font-mono">{{ t('postcard.obsInfo') }}</p>
 
             <div class="field">
-              <label class="field-label">地点名称</label>
+              <label class="field-label">{{ t('postcard.locationName') }}</label>
               <input
                 v-model="locationName"
                 type="text"
                 class="field-input"
-                placeholder="如:青海冷湖"
+                :placeholder="t('postcard.locationPlaceholder')"
                 maxlength="100"
               />
             </div>
 
             <div class="field-row">
               <div class="field">
-                <label class="field-label">纬度</label>
+                <label class="field-label">{{ t('postcard.latitude') }}</label>
                 <input
                   v-model="lat"
                   type="text"
@@ -395,7 +397,7 @@ function bortleLabel(level: number | null): string {
                 />
               </div>
               <div class="field">
-                <label class="field-label">经度</label>
+                <label class="field-label">{{ t('postcard.longitude') }}</label>
                 <input
                   v-model="lng"
                   type="text"
@@ -416,15 +418,15 @@ function bortleLabel(level: number | null): string {
                 <circle cx="12" cy="12" r="3.2" />
                 <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
               </svg>
-              {{ locating ? '定位中…' : '当前定位' }}
+              {{ locating ? t('postcard.locating') : t('postcard.locateBtn') }}
             </button>
 
             <div class="field field--grow">
-              <label class="field-label">描述</label>
+              <label class="field-label">{{ t('postcard.description') }}</label>
               <textarea
                 v-model="description"
                 class="field-input field-textarea"
-                placeholder="今夜的星河、感受与备注…"
+                :placeholder="t('postcard.descPlaceholder')"
                 maxlength="500"
                 rows="3"
               ></textarea>
@@ -438,7 +440,7 @@ function bortleLabel(level: number | null): string {
               @click="submit"
             >
               <div v-if="logsStore.uploading" class="spinner spinner--sm"></div>
-              <span>{{ logsStore.uploading ? '生成明信片中…' : '生成明信片' }}</span>
+              <span>{{ logsStore.uploading ? t('postcard.generatingPostcard') : t('postcard.generate') }}</span>
             </button>
           </div>
         </div>
@@ -446,16 +448,16 @@ function bortleLabel(level: number | null): string {
         <!-- 画廊 -->
         <section class="gallery-section">
           <div class="gallery-head">
-            <p class="gallery-tag font-mono">Gallery · 星空画廊</p>
+            <p class="gallery-tag font-mono">{{ t('postcard.galleryTitle') }}</p>
             <p v-if="gallery.length" class="gallery-count font-mono">
-              共 {{ gallery.length }} 张明信片
+              {{ t('postcard.count', { n: gallery.length }) }}
             </p>
           </div>
 
           <div v-if="logsStore.loading && !gallery.length" class="gallery-state">
             <div class="spinner spinner--sm"></div>
             <p class="font-mono text-xs text-moonlight/50 mt-3 tracking-wider">
-              收集星野中…
+              {{ t('postcard.collecting') }}
             </p>
           </div>
 
@@ -470,7 +472,7 @@ function bortleLabel(level: number | null): string {
                 <img
                   v-if="log.imageUrl"
                   :src="log.imageUrl"
-                  :alt="log.locationName || '星空明信片'"
+                  :alt="log.locationName || t('postcard.unnamed')"
                   loading="lazy"
                 />
                 <div v-else class="gallery-card-placeholder">
@@ -482,7 +484,7 @@ function bortleLabel(level: number | null): string {
               </div>
               <div class="gallery-card-info">
                 <p class="gallery-card-place font-display">
-                  {{ log.locationName || '无名星野' }}
+                  {{ log.locationName || t('postcard.unnamed') }}
                 </p>
                 <div class="gallery-card-foot">
                   <span class="gallery-card-date font-mono">
@@ -501,9 +503,9 @@ function bortleLabel(level: number | null): string {
           </div>
 
           <div v-else class="gallery-state">
-            <p class="font-display text-xl text-starlight/50">画廊尚空</p>
+            <p class="font-display text-xl text-starlight/50">{{ t('postcard.emptyGallery') }}</p>
             <p class="font-mono text-[10px] text-moonlight/40 mt-3">
-              上传第一张星空明信片,开启你的暗夜收藏
+              {{ t('postcard.emptyHint') }}
             </p>
           </div>
         </section>

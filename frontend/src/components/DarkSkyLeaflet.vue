@@ -42,7 +42,7 @@ function renderMarkers() {
       title: m.title,
     })
     marker.bindPopup(
-      `<div style="font-family:'Manrope',sans-serif;color:#0a0e1a;"><strong>${m.title}</strong></div>`,
+      `<div class="cityglow-popup"><strong>${m.title}</strong></div>`,
     )
     marker.on('click', () => {
       emit('marker-click', { lat: m.lat, lng: m.lng, title: m.title })
@@ -122,3 +122,36 @@ defineExpose({ flyTo, setView, invalidateSize })
 <template>
   <div ref="mapContainer" class="w-full h-full" />
 </template>
+
+<style>
+/* Leaflet popup 深色主题(全局,不能 scoped 因为 popup 在 Leaflet 内部 DOM) */
+.leaflet-popup-content-wrapper {
+  background: rgba(10, 14, 26, 0.95);
+  color: #e8eaf6;
+  border: 1px solid rgba(197, 165, 114, 0.35);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+.leaflet-popup-tip {
+  background: rgba(10, 14, 26, 0.95);
+  border: 1px solid rgba(197, 165, 114, 0.35);
+}
+.leaflet-popup-content {
+  margin: 12px 16px;
+}
+.cityglow-popup {
+  font-family: 'Manrope', sans-serif;
+}
+.cityglow-popup strong {
+  color: #c5a572;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+.leaflet-container a.leaflet-popup-close-button {
+  color: #e8eaf6;
+}
+.leaflet-container a.leaflet-popup-close-button:hover {
+  color: #c5a572;
+}
+</style>

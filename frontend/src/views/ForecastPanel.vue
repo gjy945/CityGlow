@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import { computed, watch, onMounted } from 'vue'
-import { useRoute, RouterLink } from 'vue-router'
+import { useRoute, useRouter, RouterLink } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useForecastStore } from '../stores/forecast'
+import { useFavoritesStore } from '../stores/favorites'
+import { useAuthStore } from '../stores/auth'
 import MoonPhaseCanvas from '../components/MoonPhaseCanvas.vue'
+
+const { t, locale } = useI18n()
 
 interface Props {
   lat?: number
@@ -17,7 +22,10 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{ (e: 'close'): void }>()
 
 const route = useRoute()
+const router = useRouter()
 const forecastStore = useForecastStore()
+const favoritesStore = useFavoritesStore()
+const authStore = useAuthStore()
 
 // 优先 props,否则回退路由 query
 const resolvedLat = computed<number | undefined>(() => {
@@ -52,7 +60,15 @@ async function load() {
 watch([resolvedLat, resolvedLng], () => {
   load()
 })
-onMounted(load)
+onMounted(() => {
+  load()
+  // 已登录时预加载收藏列表,以正确显示星标状态
+  if (authStore.isLoggedIn && favoritesStore.list.length === 0) {
+    favoritesStore.fetch().catch(() => {
+      // 错误已记录在 store.error 中,此处忽略
+    })
+  }
+})
 
 // 指数颜色映射:80+ 暗金 / 60-79 月光蓝 / 40-59 橙色 / <40 红
 function scoreColor(score: number): string {
@@ -81,7 +97,7 @@ function formatTime(unixSeconds: number): string {
   if (!unixSeconds) return '--:--'
   const d = new Date(unixSeconds * 1000)
   if (Number.isNaN(d.getTime())) return '--:--'
-  return d.toLocaleTimeString('zh-CN', {
+  return d.toLocaleTimeString(locale.value, {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
@@ -93,6 +109,34 @@ function estimateTwilightEnd(): string {
   if (!data.value?.sunset) return '--:--'
   return formatTime(data.value.sunset + 90 * 60)
 }
+
+// 收藏状态:当前坐标是否已收藏
+const favorited = computed(() => {
+  if (!hasCoords.value) return false
+  return favoritesStore.isFavorite(resolvedLat.value!, resolvedLng.value!)
+})
+
+// 切换收藏/取消收藏
+async function toggleFavorite() {
+  if (!hasCoords.value) return
+  const lat = resolvedLat.value!
+  const lng = resolvedLng.value!
+  // 未登录 → 跳转登录页(带回跳地址)
+  if (!authStore.isLoggedIn) {
+    router.push({ name: 'login', query: { redirect: route.fullPath } })
+    return
+  }
+  try {
+    if (favoritesStore.isFavorite(lat, lng)) {
+      await favoritesStore.remove(lat, lng)
+    } else {
+      // 默认名称用坐标,便于在收藏列表中识别
+      await favoritesStore.add(`${lat.toFixed(4)}, ${lng.toFixed(4)}`, lat, lng)
+    }
+  } catch {
+    // 错误已记录在 store.error 中,此处忽略
+  }
+}
 </script>
 
 <template>
@@ -103,7 +147,7 @@ function estimateTwilightEnd(): string {
         v-if="embedded"
         class="forecast-close"
         @click="emit('close')"
-        aria-label="关闭面板"
+        :aria-label="t('forecast.close')"
       >
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
           <path
@@ -124,20 +168,20 @@ function estimateTwilightEnd(): string {
             stroke-linejoin="round"
           />
         </svg>
-        返回地图
+        {{ t('forecast.backToMap') }}
       </RouterLink>
 
       <!-- 加载中(无数据) -->
       <div v-if="loading && !data" class="forecast-state">
         <div class="spinner" />
         <p class="font-mono text-xs text-moonlight/60 mt-4 tracking-wider">
-          计算观星条件中…
+          {{ t('forecast.calculating') }}
         </p>
       </div>
 
       <!-- 错误(无数据) -->
       <div v-else-if="error && !data" class="forecast-state">
-        <p class="font-display text-xl text-starlight/80">暂无数据</p>
+        <p class="font-display text-xl text-starlight/80">{{ t('forecast.noData') }}</p>
         <p class="font-mono text-[10px] text-moonlight/50 mt-3 break-all">
           {{ error }}
         </p>
@@ -146,19 +190,19 @@ function estimateTwilightEnd(): string {
       <!-- 无坐标 -->
       <div v-else-if="!hasCoords" class="forecast-state">
         <p class="font-mono text-[10px] uppercase tracking-[0.3em] text-dark-gold/80">
-          No coordinates
+          {{ t('forecast.noCoords') }}
         </p>
         <p class="font-display text-2xl text-starlight starlight-text mt-3">
-          请选择观测位置
+          {{ t('forecast.selectLocation') }}
         </p>
         <p class="font-body text-sm text-moonlight/60 mt-3 leading-relaxed max-w-[280px]">
-          在暗夜地图上点击任意位置,即可获取该坐标的观星指数、月相与日落时间轴。
+          {{ t('forecast.selectLocationHint') }}
         </p>
         <RouterLink
           to="/"
           class="mt-6 inline-block font-mono text-[11px] uppercase tracking-[0.2em] text-dark-gold hover:text-starlight transition-colors border border-dark-gold/40 hover:border-starlight/60 px-5 py-2 rounded"
         >
-          前往暗夜地图
+          {{ t('forecast.goToMap') }}
         </RouterLink>
       </div>
 
@@ -171,11 +215,28 @@ function estimateTwilightEnd(): string {
 
         <!-- 标题 -->
         <header class="forecast-header">
-          <p class="font-mono text-[10px] uppercase tracking-[0.3em] text-dark-gold/80">
-            Section 02 · Astro Forecast
-          </p>
+          <div class="forecast-header-row">
+            <p class="font-mono text-[10px] uppercase tracking-[0.3em] text-dark-gold/80">
+              {{ t('forecast.sectionTag') }}
+            </p>
+            <button
+              v-if="hasCoords"
+              type="button"
+              class="favorite-toggle"
+              :class="{ 'favorite-toggle--active': favorited }"
+              :aria-label="favorited ? t('forecast.removeFromFavorites') : t('forecast.addToFavorites')"
+              :title="favorited ? t('forecast.removeFromFavorites') : t('forecast.addToFavorites')"
+              @click="toggleFavorite"
+            >
+              <svg viewBox="0 0 24 24" width="18" height="18"
+                :fill="favorited ? 'currentColor' : 'none'"
+                stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 17.3 L5.8 21 L7.6 13.5 L2 9 L9.6 8.6 L12 2 L14.4 8.6 L22 9 L16.4 13.5 L18.2 21 Z" />
+              </svg>
+            </button>
+          </div>
           <h2 class="font-display text-2xl text-starlight starlight-text mt-1">
-            观星指数
+            {{ t('forecast.score') }}
           </h2>
           <p
             v-if="coordLabel"
@@ -269,34 +330,34 @@ function estimateTwilightEnd(): string {
         <!-- 数据行 -->
         <div class="forecast-section forecast-data">
           <div class="data-row">
-            <span class="data-label">云量</span>
+            <span class="data-label">{{ t('forecast.cloudCover') }}</span>
             <span class="data-value">
               {{ Math.round(data.cloudCover) }}<span class="data-unit">%</span>
             </span>
           </div>
           <div class="data-row">
-            <span class="data-label">Bortle</span>
+            <span class="data-label">{{ t('forecast.bortle') }}</span>
             <span class="data-value">
-              {{ data.bortleLevel }}<span class="data-unit">级</span>
+              {{ data.bortleLevel }}<span class="data-unit">{{ t('common.levelUnit') }}</span>
             </span>
           </div>
         </div>
 
         <!-- 时间轴 -->
         <div class="forecast-section forecast-timeline">
-          <p class="timeline-label">夜空时间线</p>
+          <p class="timeline-label">{{ t('forecast.nightTimeline') }}</p>
           <div class="data-row">
-            <span class="data-label">日落</span>
+            <span class="data-label">{{ t('forecast.sunset') }}</span>
             <span class="data-value">{{ formatTime(data.sunset) }}</span>
           </div>
           <div class="data-row">
-            <span class="data-label">天文昏影终</span>
+            <span class="data-label">{{ t('forecast.twilightEnd') }}</span>
             <span class="data-value">
               {{ estimateTwilightEnd() }}<span class="data-unit">~</span>
             </span>
           </div>
           <div class="data-row">
-            <span class="data-label">日出</span>
+            <span class="data-label">{{ t('forecast.sunrise') }}</span>
             <span class="data-value">{{ formatTime(data.sunrise) }}</span>
           </div>
         </div>
@@ -414,6 +475,37 @@ function estimateTwilightEnd(): string {
 
 .forecast-header {
   margin-bottom: 22px;
+}
+.forecast-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* 收藏切换按钮:未收藏空心(月光蓝),已收藏填充暗金 */
+.favorite-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(10, 14, 26, 0.4);
+  border: 1px solid rgba(232, 234, 246, 0.12);
+  color: rgba(159, 168, 218, 0.7);
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+.favorite-toggle:hover {
+  color: #c5a572;
+  border-color: rgba(197, 165, 114, 0.5);
+  background: rgba(197, 165, 114, 0.1);
+}
+.favorite-toggle--active {
+  color: #c5a572;
+  border-color: rgba(197, 165, 114, 0.55);
+  background: rgba(197, 165, 114, 0.12);
 }
 
 .forecast-score {

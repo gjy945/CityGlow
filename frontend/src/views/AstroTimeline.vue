@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useEventsStore } from '../stores/events'
 import type { AstroEvent } from '../api/events'
 
+const { t, locale } = useI18n()
 const eventsStore = useEventsStore()
 
 const now = ref(Date.now())
@@ -58,39 +60,38 @@ interface TypeMeta {
   tip: string
 }
 
-const typeMeta: Record<string, TypeMeta> = {
-  METEOR: {
-    label: '流星雨',
-    color: '#c5a572',
-    glow: 'rgba(197, 165, 114, 0.55)',
-    tip: '后半夜辐射点升至最高时观测最佳。远离城市光污染,让双眼适应黑暗约 20 分钟,无需望远镜即可肉眼追随。',
-  },
-  ECLIPSE: {
-    label: '日月食',
-    color: '#9fa8da',
-    glow: 'rgba(159, 168, 218, 0.55)',
-    tip: '日食须佩戴专业巴德膜滤光镜直视,严禁裸眼;月食肉眼全程可见,望远镜下可观察月面铜红色调变化。',
-  },
-  PLANET: {
-    label: '行星动态',
-    color: '#e8eaf6',
-    glow: 'rgba(232, 234, 246, 0.55)',
-    tip: '冲日前后行星最亮且整夜可见,中小型望远镜可分辨行星盘面、土星环系或木星伽利略卫星。',
-  },
+function typeOf(type: string): TypeMeta {
+  const map: Record<string, TypeMeta> = {
+    METEOR: {
+      label: t('timeline.type.METEOR'),
+      color: '#c5a572',
+      glow: 'rgba(197, 165, 114, 0.55)',
+      tip: t('timeline.tips.METEOR'),
+    },
+    ECLIPSE: {
+      label: t('timeline.type.ECLIPSE'),
+      color: '#9fa8da',
+      glow: 'rgba(159, 168, 218, 0.55)',
+      tip: t('timeline.tips.ECLIPSE'),
+    },
+    PLANET: {
+      label: t('timeline.type.PLANET'),
+      color: '#e8eaf6',
+      glow: 'rgba(232, 234, 246, 0.55)',
+      tip: t('timeline.tips.PLANET'),
+    },
+  }
+  return map[type] ?? map.PLANET
 }
 
-function typeOf(t: string): TypeMeta {
-  return typeMeta[t] ?? typeMeta.PLANET
-}
-
-function typeClass(t: string): string {
-  return `type-${(t || 'planet').toLowerCase()}`
+function typeClass(type: string): string {
+  return `type-${(type || 'planet').toLowerCase()}`
 }
 
 function formatDate(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return '--'
-  return `${d.getMonth() + 1}月${d.getDate()}日`
+  return d.toLocaleDateString(locale.value, { month: 'short', day: 'numeric' })
 }
 
 function formatMonth(iso: string): string {
@@ -204,20 +205,20 @@ onMounted(() => {
     <div class="timeline-inner">
       <!-- 标题区 -->
       <header class="timeline-header">
-        <p class="section-tag">Section 03 · Cosmic Chronicle</p>
-        <h1 class="timeline-title font-display starlight-text">天文事件时间轴</h1>
-        <p class="timeline-sub">2026 · 暗夜守护者天文志</p>
+        <p class="section-tag">{{ t('timeline.sectionTag') }}</p>
+        <h1 class="timeline-title font-display starlight-text">{{ t('timeline.title') }}</h1>
+        <p class="timeline-sub">{{ t('timeline.subtitle') }}</p>
       </header>
 
       <!-- 倒计时区 -->
       <div class="countdown-block glass-panel">
         <div class="countdown-left">
-          <p class="cd-label">距下一事件</p>
+          <p class="cd-label">{{ t('timeline.untilNext') }}</p>
           <p v-if="nextEvent" class="cd-event-title font-display">
             {{ nextEvent.title }}
           </p>
           <p v-else class="cd-event-title font-display cd-event-empty">
-            本年度星历已尽
+            {{ t('timeline.yearEnd') }}
           </p>
           <p v-if="nextEvent" class="cd-event-date font-mono">
             {{ formatFull(nextEvent.eventTime) }} · {{ typeOf(nextEvent.eventType).label }}
@@ -227,7 +228,7 @@ onMounted(() => {
           <template v-if="countdown">
             <div class="cd-segment cd-segment--days">
               <span class="cd-num font-mono">{{ countdown.days }}</span>
-              <span class="cd-unit">天</span>
+              <span class="cd-unit">{{ t('timeline.days') }}</span>
             </div>
             <span class="cd-colon">·</span>
             <div class="cd-segment">
@@ -310,21 +311,21 @@ onMounted(() => {
       <div v-else-if="eventsStore.loading" class="timeline-state">
         <div class="spinner"></div>
         <p class="font-mono text-xs text-moonlight/60 mt-4 tracking-wider">
-          校准星历中…
+          {{ t('timeline.calibrating') }}
         </p>
       </div>
 
       <!-- 空态/错误 -->
       <div v-else class="timeline-state">
-        <p class="font-display text-2xl text-starlight/70">星历暂缺</p>
+        <p class="font-display text-2xl text-starlight/70">{{ t('timeline.empty') }}</p>
         <p class="font-mono text-[10px] text-moonlight/50 mt-3">
-          {{ eventsStore.error || '未能加载天文事件' }}
+          {{ eventsStore.error || t('timeline.loadError') }}
         </p>
       </div>
 
       <!-- 滚动提示 -->
       <p v-if="sortedEvents.length" class="scroll-hint font-mono">
-        ← 横向滚动浏览全年星历 →
+        {{ t('timeline.scrollHint') }}
       </p>
     </div>
 
@@ -341,7 +342,7 @@ onMounted(() => {
             :class="typeClass(selected.eventType)"
             :style="{ '--accent': typeOf(selected.eventType).color, '--accent-glow': typeOf(selected.eventType).glow }"
           >
-            <button class="modal-close" @click="closeDetail" aria-label="关闭">
+            <button class="modal-close" @click="closeDetail" :aria-label="t('common.close')">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path d="M2 2 L12 12 M12 2 L2 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
               </svg>
@@ -380,12 +381,12 @@ onMounted(() => {
             <div class="modal-divider"></div>
 
             <div class="modal-section">
-              <p class="modal-section-label font-mono">事件详注</p>
+              <p class="modal-section-label font-mono">{{ t('timeline.detailSection') }}</p>
               <p class="modal-desc">{{ selected.description }}</p>
             </div>
 
             <div class="modal-section">
-              <p class="modal-section-label font-mono">观测建议</p>
+              <p class="modal-section-label font-mono">{{ t('timeline.tipSection') }}</p>
               <p class="modal-tip">{{ typeOf(selected.eventType).tip }}</p>
             </div>
           </div>

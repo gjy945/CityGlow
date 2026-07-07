@@ -2,8 +2,11 @@ package com.cityglow.controller;
 
 import com.cityglow.entity.AstroEvent;
 import com.cityglow.repository.AstroEventRepository;
+import com.cityglow.repository.UserRepository;
+import com.cityglow.util.JwtUtil;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -33,6 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * </ul>
  */
 @WebMvcTest(AstroEventController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class AstroEventControllerTest {
 
     @Autowired
@@ -40,6 +44,14 @@ class AstroEventControllerTest {
 
     @MockBean
     private AstroEventRepository astroEventRepository;
+
+    // 以下两个 @MockBean 仅为满足 JwtAuthenticationFilter 自动装配
+    // (Filter 在 @WebMvcTest 中被扫描,但 JwtUtil/UserRepository 不在切片内)
+    @MockBean
+    private JwtUtil jwtUtil;
+
+    @MockBean
+    private UserRepository userRepository;
 
     /**
      * 无筛选 → 200,返回全部事件列表,JSON 含 code/message/data 数组。

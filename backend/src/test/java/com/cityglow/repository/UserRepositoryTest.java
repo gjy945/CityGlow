@@ -27,11 +27,34 @@ class UserRepositoryTest {
     void saveAndFindById_returnsUserWithCorrectUsername() {
         User user = new User();
         user.setUsername("stargazer");
+        user.setPassword("hashed-pwd"); // password 字段 nullable=false
 
         User saved = userRepository.save(user);
         Optional<User> found = userRepository.findById(saved.getId());
 
         assertThat(found).isPresent();
         assertThat(found.get().getUsername()).isEqualTo("stargazer");
+        assertThat(found.get().getPassword()).isEqualTo("hashed-pwd");
+    }
+
+    @Test
+    void findByUsername_returnsUserWhenExists() {
+        User user = new User();
+        user.setUsername("stargazer");
+        user.setPassword("hashed-pwd");
+        userRepository.save(user);
+
+        Optional<User> found = userRepository.findByUsername("stargazer");
+
+        assertThat(found).isPresent();
+        assertThat(found.get().getUsername()).isEqualTo("stargazer");
+        assertThat(found.get().getPassword()).isEqualTo("hashed-pwd");
+    }
+
+    @Test
+    void findByUsername_returnsEmptyWhenNotExists() {
+        Optional<User> found = userRepository.findByUsername("ghost");
+
+        assertThat(found).isEmpty();
     }
 }

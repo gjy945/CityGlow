@@ -34,6 +34,7 @@ class ObservationLogRepositoryTest {
         // 先存 user(模拟外键关系)
         User user = new User();
         user.setUsername("observer");
+        user.setPassword("hashed-pwd"); // password 字段 nullable=false
         User savedUser = userRepository.save(user);
 
         // 再存 log
@@ -63,6 +64,7 @@ class ObservationLogRepositoryTest {
         // 准备 user
         User user = new User();
         user.setUsername("observer");
+        user.setPassword("hashed-pwd"); // password 字段 nullable=false
         User savedUser = userRepository.save(user);
 
         // 范围内日志 1: 北京(39.9, 116.4)
