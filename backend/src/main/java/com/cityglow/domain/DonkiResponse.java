@@ -62,9 +62,9 @@ public record DonkiResponse(
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record GeomagneticStorm(
             @JsonProperty("activityID") String activityID,
-            @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss['Z']", timezone = "UTC")
+            @JsonFormat(pattern = "yyyy-MM-dd['T']['HH:mm'][':'mm][:ss]['Z']", timezone = "UTC")
             @JsonProperty("startTime") LocalDateTime startTime,
-            @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss['Z']", timezone = "UTC")
+            @JsonFormat(pattern = "yyyy-MM-dd['T']['HH:mm'][':'mm][:ss]['Z']", timezone = "UTC")
             @JsonProperty("observedTime") LocalDateTime observedTime,
             @JsonProperty("link") String link
     ) {
@@ -85,7 +85,7 @@ public record DonkiResponse(
     public record SolarFlare(
             @JsonProperty("flareID") String flareID,
             @JsonProperty("classType") String classType,
-            @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss['Z']", timezone = "UTC")
+            @JsonFormat(pattern = "yyyy-MM-dd['T']['HH:mm'][':'mm][:ss]['Z']", timezone = "UTC")
             @JsonProperty("peakTime") LocalDateTime peakTime,
             @JsonProperty("link") String link
     ) {
