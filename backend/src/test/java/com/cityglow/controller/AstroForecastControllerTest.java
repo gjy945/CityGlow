@@ -1,0 +1,114 @@
+package com.cityglow.controller;
+
+import com.cityglow.domain.ForecastResult;
+import com.cityglow.service.ForecastService;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+/**
+ * AstroForecastController Web 层测试(@WebMvcTest + MockMvc)。
+ *
+ * <p>用 {@link MockBean} mock {@link ForecastService},不加载完整 Spring 上下文,
+ * 只装配 AstroForecastController 的 MVC 基础设施(Jackson 序列化、参数绑定、异常处理)。</p>
+ *
+ * <p>验证:</p>
+ * <ul>
+ *   <li>GET /api/v1/astro/forecast?lat=39.9&lng=116.4 返回 200,
+ *       JSON 含统一 ApiResponse 结构(code/message/data)及 data.score 等字段。</li>
+ *   <li>缺 lat 或 lng 参数返回 400(Required request parameter 缺失)。</li>
+ * </ul>
+ */
+@WebMvcTest(AstroForecastController.class)
+class AstroForecastControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
+    private ForecastService forecastService;
+
+    /**
+     * 正常请求:lat=39.9&lng=116.4 → 200,
+     * 响应 JSON 含 code=200, message="success", data.score=68 等。
+     */
+    @Test
+    void forecast_validParams_returns200WithApiResponseStructure() throws Exception {
+        // given: mock service 返回固定 ForecastResult
+        ForecastResult result = new ForecastResult(
+                68, 10.0, "New Moon", 5, "适合观星", 1700000000L, 1700050000L);
+        when(forecastService.forecast(39.9, 116.4)).thenReturn(result);
+
+        // when + then: 校验 HTTP 状态码与 JSON 结构
+        mockMvc.perform(get("/api/v1/astro/forecast")
+                        .param("lat", "39.9")
+                        .param("lng", "116.4"))
+                .andExpect(status().isOk())
+                // 统一 ApiResponse 三字段
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.message").value("success"))
+                // data 内 ForecastResult 字段
+                .andExpect(jsonPath("$.data.score").value(68))
+                .andExpect(jsonPath("$.data.cloudCover").value(10.0))
+                .andExpect(jsonPath("$.data.moonPhase").value("New Moon"))
+                .andExpect(jsonPath("$.data.bortleLevel").value(5))
+                .andExpect(jsonPath("$.data.message").value("适合观星"))
+                .andExpect(jsonPath("$.data.sunrise").value(1700000000))
+                .andExpect(jsonPath("$.data.sunset").value(1700050000));
+    }
+
+    /**
+     * 缺 lng 参数 → 400 Bad Request。
+     */
+    @Test
+    void forecast_missingLngParam_returns400() throws Exception {
+        mockMvc.perform(get("/api/v1/astro/forecast")
+                        .param("lat", "39.9"))
+                .andExpect(status().isBadRequest());
+    }
+
+    /**
+     * 缺 lat 参数 → 400 Bad Request。
+     */
+    @Test
+    void forecast_missingLatParam_returns400() throws Exception {
+        mockMvc.perform(get("/api/v1/astro/forecast")
+                        .param("lng", "116.4"))
+                .andExpect(status().isBadRequest());
+    }
+
+    /**
+     * 两个参数都缺 → 400 Bad Request。
+     */
+    @Test
+    void forecast_missingBothParams_returns400() throws Exception {
+        mockMvc.perform(get("/api/v1/astro/forecast"))
+                .andExpect(status().isBadRequest());
+    }
+
+    /**
+     * 不同经纬度(阿里天文台)也能正确转发给 service 并返回。
+     * 验证 service 被正确调用且响应包装正确。
+     */
+    @Test
+    void forecast_aliObservatory_returnsPerfectScore() throws Exception {
+        ForecastResult result = new ForecastResult(
+                100, 0.0, "New Moon", 1, "今夜极佳!", 1700000000L, 1700050000L);
+        when(forecastService.forecast(32.5, 80.0)).thenReturn(result);
+
+        mockMvc.perform(get("/api/v1/astro/forecast")
+                        .param("lat", "32.5")
+                        .param("lng", "80.0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.score").value(100))
+                .andExpect(jsonPath("$.data.bortleLevel").value(1))
+                .andExpect(jsonPath("$.data.message").value("今夜极佳!"));
+    }
+}
