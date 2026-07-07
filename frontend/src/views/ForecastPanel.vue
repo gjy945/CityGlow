@@ -6,8 +6,6 @@ import { useForecastStore } from '../stores/forecast'
 import { useFavoritesStore } from '../stores/favorites'
 import { useAuthStore } from '../stores/auth'
 import MoonPhaseCanvas from '../components/MoonPhaseCanvas.vue'
-import BestWindowCard from '../components/BestWindowCard.vue'
-import AuroraCard from '../components/AuroraCard.vue'
 import BortleInfoModal from '../components/BortleInfoModal.vue'
 
 const { t, locale } = useI18n()
@@ -256,14 +254,6 @@ function closeBortleModal() {
           <div class="refresh-bar-inner" />
         </div>
 
-        <!-- 今晚最佳观测时段(顶部) -->
-        <BestWindowCard
-          v-if="hasCoords"
-          :lat="resolvedLat"
-          :lng="resolvedLng"
-          class="forecast-extra-card"
-        />
-
         <!-- 标题 -->
         <header class="forecast-header">
           <div class="forecast-header-row">
@@ -414,9 +404,6 @@ function closeBortleModal() {
             </span>
           </div>
         </div>
-
-        <!-- 极光预报(底部) -->
-        <AuroraCard class="forecast-extra-card" />
 
         <!-- 时间轴 -->
         <div class="forecast-section forecast-timeline">
