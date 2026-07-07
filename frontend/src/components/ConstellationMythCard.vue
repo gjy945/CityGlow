@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { skyApi, type MythCard } from '../api/sky'
 
 interface Props {
@@ -19,6 +20,8 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   'close': []
 }>()
+
+const router = useRouter()
 
 // 神话数据 + 加载状态
 const myths = ref<MythCard[]>([])
@@ -75,9 +78,10 @@ onUnmounted(() => {
   window.removeEventListener('keydown', onKey)
 })
 
-// Phase 5 实现跳转,此处仅占位
+// 跳转到星图明信片页面(最简方案:仅跳转,不传参)
 function addToPostcard() {
-  console.log('[ConstellationMythCard] 加入星图明信片:', props.constellation)
+  router.push('/postcard')
+  emit('close')
 }
 </script>
 

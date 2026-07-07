@@ -24,6 +24,9 @@ const cursorPointer = ref(false)
 // 记录上次悬停的星座,避免 mousemove 高频重复 emit
 let lastHovered: string | null = null
 
+// 数据更新时的整体淡入动画触发(通过 class toggle 重启 CSS animation)
+const fadeActive = ref(false)
+
 // Canvas 显示尺寸(CSS 像素),由 ResizeObserver 更新
 let cssWidth = 0
 let cssHeight = 0
@@ -151,27 +154,96 @@ function drawConstellationLabel(
   ctx.restore()
 }
 
-function drawHorizon(ctx: CanvasRenderingContext2D, cx: number, cy: number, maxR: number) {
+// 地平线环:主环 + 16 方位刻度 + 主方位标签(N/E/S/W)
+function drawHorizonRing(ctx: CanvasRenderingContext2D, cx: number, cy: number, maxR: number) {
   ctx.save()
+
+  // 主环:暗金 30% 透明,1px
   ctx.strokeStyle = COLOR_HORIZON
   ctx.lineWidth = 1
   ctx.beginPath()
   ctx.arc(cx, cy, maxR, 0, Math.PI * 2)
   ctx.stroke()
+
+  // 16 方位(每 22.5°):主方位画标签,其他画小刻度线
+  const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
+    'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']
+
+  for (let i = 0; i < 16; i++) {
+    const angle = (i * 22.5 * Math.PI) / 180
+    if (i % 4 === 0) {
+      // 主方位(N/E/S/W):衬线字体标签
+      ctx.font = '14px "Cormorant Garamond", serif'
+      ctx.fillStyle = COLOR_DIR
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      const offset = maxR + 18
+      const x = cx + offset * Math.sin(angle)
+      const y = cy - offset * Math.cos(angle)
+      ctx.fillText(directions[i], x, y)
+    } else {
+      // 其他方位:小刻度线
+      ctx.strokeStyle = 'rgba(197, 165, 114, 0.35)'
+      ctx.lineWidth = 0.8
+      const x1 = cx + maxR * Math.sin(angle)
+      const y1 = cy - maxR * Math.cos(angle)
+      const x2 = cx + (maxR + 5) * Math.sin(angle)
+      const y2 = cy - (maxR + 5) * Math.cos(angle)
+      ctx.beginPath()
+      ctx.moveTo(x1, y1)
+      ctx.lineTo(x2, y2)
+      ctx.stroke()
+    }
+  }
+
   ctx.restore()
 }
 
-function drawDirectionLabels(ctx: CanvasRenderingContext2D, cx: number, cy: number, maxR: number) {
+// 四角装饰角花:简洁 L 形线条 + 角点(铜版画风格简化版)
+function drawCornerOrnaments(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const size = 30
+  const margin = 16
+  const color = 'rgba(197, 165, 114, 0.4)'
   ctx.save()
-  ctx.font = '14px "Cormorant Garamond", serif'
-  ctx.fillStyle = COLOR_DIR
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  const offset = maxR + 18
-  ctx.fillText('N', cx, cy - offset)
-  ctx.fillText('S', cx, cy + offset)
-  ctx.fillText('E', cx + offset, cy)
-  ctx.fillText('W', cx - offset, cy)
+  ctx.strokeStyle = color
+  ctx.lineWidth = 1
+
+  // 左上 L 形
+  ctx.beginPath()
+  ctx.moveTo(margin, margin + size)
+  ctx.lineTo(margin, margin)
+  ctx.lineTo(margin + size, margin)
+  ctx.stroke()
+
+  // 右上 L 形
+  ctx.beginPath()
+  ctx.moveTo(w - margin - size, margin)
+  ctx.lineTo(w - margin, margin)
+  ctx.lineTo(w - margin, margin + size)
+  ctx.stroke()
+
+  // 左下 L 形
+  ctx.beginPath()
+  ctx.moveTo(margin, h - margin - size)
+  ctx.lineTo(margin, h - margin)
+  ctx.lineTo(margin + size, h - margin)
+  ctx.stroke()
+
+  // 右下 L 形
+  ctx.beginPath()
+  ctx.moveTo(w - margin - size, h - margin)
+  ctx.lineTo(w - margin, h - margin)
+  ctx.lineTo(w - margin, h - margin - size)
+  ctx.stroke()
+
+  // 四角小圆点装饰
+  ctx.fillStyle = color
+  const dotR = 2
+  ctx.beginPath(); ctx.arc(margin, margin, dotR, 0, Math.PI * 2); ctx.fill()
+  ctx.beginPath(); ctx.arc(w - margin, margin, dotR, 0, Math.PI * 2); ctx.fill()
+  ctx.beginPath(); ctx.arc(margin, h - margin, dotR, 0, Math.PI * 2); ctx.fill()
+  ctx.beginPath(); ctx.arc(w - margin, h - margin, dotR, 0, Math.PI * 2); ctx.fill()
+
   ctx.restore()
 }
 
@@ -207,11 +279,11 @@ function redraw() {
   // 半径取短边的一半再 *0.9,留出方位标空间
   const maxR = (Math.min(cssWidth, cssHeight) / 2) * 0.9
 
-  // 地平线环
-  drawHorizon(ctx, cx, cy, maxR)
+  // 地平线环(含主环 + 16 方位刻度 + 主方位标签)
+  drawHorizonRing(ctx, cx, cy, maxR)
 
-  // 方位标
-  drawDirectionLabels(ctx, cx, cy, maxR)
+  // 四角装饰角花
+  drawCornerOrnaments(ctx, cssWidth, cssHeight)
 
   const sv = props.skyView
   if (!sv) return
@@ -312,14 +384,24 @@ function onMouseLeave() {
   }
 }
 
-watch(() => props.skyView, () => {
+watch(() => props.skyView, (newVal) => {
+  if (!newVal) return
   // 数据刷新后清除过期的悬停状态
   if (lastHovered !== null) {
     lastHovered = null
     cursorPointer.value = false
     emit('hover', null)
   }
-  nextTick(redraw)
+  // 触发整体淡入动画:先移除 class,下一帧再添加,以重启 CSS animation
+  fadeActive.value = false
+  nextTick(() => {
+    redraw()
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        fadeActive.value = true
+      })
+    })
+  })
 }, { deep: false })
 
 watch(() => props.hoveredConstellation, () => {
@@ -329,6 +411,12 @@ watch(() => props.hoveredConstellation, () => {
 onMounted(() => {
   setupCanvas()
   redraw()
+  // 初始淡入
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      fadeActive.value = true
+    })
+  })
   if (containerRef.value) {
     resizeObserver = new ResizeObserver(() => {
       handleResize()
@@ -350,6 +438,7 @@ onUnmounted(() => {
     <canvas
       ref="canvas"
       class="star-canvas"
+      :class="{ 'star-canvas--fade-in': fadeActive }"
       :style="{ cursor: cursorPointer ? 'pointer' : 'default' }"
       @mousemove="onMouseMove"
       @click="onClick"
@@ -370,5 +459,13 @@ onUnmounted(() => {
   display: block;
   width: 100%;
   height: 100%;
+}
+/* 数据更新时的整体淡入动画(400ms) */
+.star-canvas--fade-in {
+  animation: starFadeIn 400ms ease-out;
+}
+@keyframes starFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 </style>

@@ -27,7 +27,8 @@ const date = ref<string>(todayStr())
 const hour = ref<number>(22)
 
 const skyView = ref<SkyViewResult | null>(null)
-const loading = ref(false)
+const isLoading = ref(false)      // 首次加载(全屏加载)
+const isRefreshing = ref(false)   // 刷新中(已有数据,右上角小 spinner)
 const error = ref<string>('')
 
 // 悬停的星座名(传给 StarCanvas 控制高亮)
@@ -64,17 +65,30 @@ function closeMythCard() {
 }
 
 async function loadSkyView() {
-  loading.value = true
+  // 首次加载用全屏 loading;已有数据用右上角小 spinner(避免闪屏)
+  if (!skyView.value) {
+    isLoading.value = true
+  } else {
+    isRefreshing.value = true
+  }
   error.value = ''
   try {
     const result = await skyApi.getSkyView(lat.value, lng.value, date.value, hour.value)
     skyView.value = result
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
-    skyView.value = null
+    // 已有数据时刷新失败不清空旧数据,避免闪屏
   } finally {
-    loading.value = false
+    isLoading.value = false
+    isRefreshing.value = false
   }
+}
+
+// 收藏点选择:更新坐标并重新加载
+function onSelectLocation(latVal: number, lngVal: number) {
+  lat.value = latVal
+  lng.value = lngVal
+  loadSkyView()
 }
 
 // 浏览器定位
@@ -147,19 +161,20 @@ const subtitle = computed(() => t('skyAtlas.subtitle'))
       @update:date="date = $event"
       @update:hour="hour = $event"
       @locate="locateMe"
+      @select-location="onSelectLocation"
     />
 
     <!-- 星图主体 -->
     <div class="sky-atlas-canvas-wrap">
-      <!-- 加载中 -->
-      <div v-if="loading && !skyView" class="sky-atlas-state">
+      <!-- 加载中(首次加载,全屏) -->
+      <div v-if="isLoading" class="sky-atlas-state">
         <div class="spinner" />
         <p class="font-mono text-xs text-moonlight/60 mt-4 tracking-wider">
           {{ t('skyAtlas.loading') }}
         </p>
       </div>
 
-      <!-- 错误 -->
+      <!-- 错误(仅首次加载失败时显示) -->
       <div v-else-if="error && !skyView" class="sky-atlas-state">
         <p class="font-display text-xl text-starlight/80">{{ t('skyAtlas.error') }}</p>
         <p class="font-mono text-[10px] text-moonlight/50 mt-3 break-all">
@@ -176,8 +191,8 @@ const subtitle = computed(() => t('skyAtlas.subtitle'))
         @select="onSelect"
       />
 
-      <!-- 数据加载中覆盖层(已有数据时刷新) -->
-      <div v-if="loading && skyView" class="refresh-overlay">
+      <!-- 刷新中(已有数据,右上角小 spinner,Canvas 保持显示旧数据) -->
+      <div v-if="isRefreshing" class="refresh-overlay">
         <div class="spinner spinner--sm" />
       </div>
     </div>
