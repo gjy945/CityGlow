@@ -13,6 +13,7 @@ const links = [
   { to: '/', key: 'nav.darkSky' },
   { to: '/forecast', key: 'nav.forecast' },
   { to: '/timeline', key: 'nav.timeline' },
+  { to: '/sky', key: 'nav.sky' },
   { to: '/postcard', key: 'nav.postcard' },
 ]
 

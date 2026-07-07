@@ -5,6 +5,7 @@ const routes = [
   { path: '/', name: 'home', component: () => import('../views/DarkSkyMap.vue') },
   { path: '/forecast', name: 'forecast', component: () => import('../views/ForecastPanel.vue') },
   { path: '/timeline', name: 'timeline', component: () => import('../views/AstroTimeline.vue') },
+  { path: '/sky', name: 'sky', component: () => import('../views/SkyAtlas.vue') },
   {
     path: '/postcard',
     name: 'postcard',
