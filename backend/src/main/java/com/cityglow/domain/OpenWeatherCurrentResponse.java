@@ -16,7 +16,8 @@ import java.util.List;
 public record OpenWeatherCurrentResponse(
         Clouds clouds,
         Main main,
-        List<Weather> weather
+        List<Weather> weather,
+        Sys sys
 ) {
 
     /**
@@ -45,9 +46,32 @@ public record OpenWeatherCurrentResponse(
     }
 
     /**
+     * 系统信息(含日出日落 unix 秒)。
+     */
+    public record Sys(
+            @JsonProperty("sunrise") long sunrise,
+            @JsonProperty("sunset") long sunset
+    ) {
+    }
+
+    /**
      * 便捷取云量:当 clouds 为 null(JSON 缺字段)时返回 0。
      */
     public int getCloudCover() {
         return clouds() != null ? clouds().all() : 0;
+    }
+
+    /**
+     * 便捷取日出时间:sys 为 null 时返回 0。
+     */
+    public long getSunrise() {
+        return sys() != null ? sys().sunrise() : 0;
+    }
+
+    /**
+     * 便捷取日落时间:sys 为 null 时返回 0。
+     */
+    public long getSunset() {
+        return sys() != null ? sys().sunset() : 0;
     }
 }

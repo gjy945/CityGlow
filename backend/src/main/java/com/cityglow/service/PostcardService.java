@@ -1,9 +1,9 @@
 package com.cityglow.service;
 
-import com.cityglow.domain.OpenWeatherOneCallResponse;
 import com.cityglow.domain.PostcardResult;
 import com.cityglow.domain.WatermarkInfo;
 import com.cityglow.util.BortleEstimator;
+import com.cityglow.util.MoonPhaseCalculator;
 import com.cityglow.util.MoonPhaseDescription;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +21,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -151,9 +152,10 @@ public class PostcardService {
     }
 
     /**
-     * 准备水印元数据:查 Bortle 等级(本地表)、调 OpenWeather 取月相、格式化文本。
+     * 准备水印元数据:查 Bortle 等级(本地表)、用天文算法算月相、格式化文本。
      *
-     * <p>包级可见以支持单元测试。OpenWeather 返回 null 时月相兜底为 0(新月)。</p>
+     * <p>包级可见以支持单元测试。月相用 {@link MoonPhaseCalculator} 根据日期计算,
+     * 不依赖 OpenWeather One Call API 3.0(需单独订阅)。</p>
      *
      * @param lat          纬度
      * @param lng          经度
@@ -162,9 +164,7 @@ public class PostcardService {
      */
     WatermarkInfo prepareWatermarkInfo(double lat, double lng, String locationName) {
         int bortle = BortleEstimator.estimate(lat, lng);
-        OpenWeatherOneCallResponse oneCall = openWeatherClient.getOneCall(lat, lng);
-        double moonPhase = (oneCall != null && oneCall.current() != null)
-                ? oneCall.current().moonPhase() : 0.0;
+        double moonPhase = MoonPhaseCalculator.calculatePhase(LocalDate.now());
         String moonPhaseDesc = MoonPhaseDescription.fromPhase(moonPhase);
         String coords = String.format("%.4f, %.4f", lat, lng);
         String dateTime = LocalDateTime.now()
