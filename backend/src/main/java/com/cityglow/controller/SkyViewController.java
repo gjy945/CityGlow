@@ -1,5 +1,6 @@
 package com.cityglow.controller;
 
+import com.cityglow.domain.ApiResponse;
 import com.cityglow.domain.ConstellationView;
 import com.cityglow.domain.MythCard;
 import com.cityglow.domain.SkyViewResult;
@@ -10,7 +11,6 @@ import com.cityglow.service.ConstellationDataService.StarRecord;
 import com.cityglow.service.StarProjectionService;
 import com.github.benmanes.caffeine.cache.Cache;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -83,16 +83,16 @@ public class SkyViewController {
      * 查询某星座的神话故事卡(希腊 + 中国,2 篇)。
      *
      * @param constellation 星座名(如 "orion")
-     * @return 神话卡列表(2 篇)
+     * @return ApiResponse 包装的神话卡列表(2 篇);未知星座返回 404 错误码
      */
     @GetMapping("/myths/{constellation}")
-    public ResponseEntity<List<MythCard>> getMyths(
+    public ApiResponse<List<MythCard>> getMyths(
             @PathVariable String constellation) {
         List<MythCard> myths = dataService.getMyths(constellation);
         if (myths.isEmpty()) {
-            return ResponseEntity.notFound().build();
+            return ApiResponse.error(404, "Constellation not found: " + constellation);
         }
-        return ResponseEntity.ok(myths);
+        return ApiResponse.success(myths);
     }
 
     // ===== 内部方法 =====

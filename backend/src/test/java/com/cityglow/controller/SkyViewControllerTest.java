@@ -29,13 +29,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>SecurityConfig 已放行 {@code GET /api/v1/sky/**},所有请求无需 JWT。</p>
  *
+ * <p><b>响应结构</b>:Controller 用统一 {@code ApiResponse<T>} 包装,
+ * 响应体形如 {@code {code: 200, message: "success", data: {...}}},
+ * 因此所有业务字段断言路径前缀为 {@code $.data.*}。</p>
+ *
  * <p>验证 6 个用例:</p>
  * <ul>
- *   <li>合法参数(lat/lng/date/hour)→ 200 + visibleStars 数组</li>
+ *   <li>合法参数(lat/lng/date/hour)→ 200 + data.visibleStars 数组</li>
  *   <li>缺省 date/hour → 200(用今天 + 默认 22 点)</li>
  *   <li>非法 hour(99)→ 200(回退到 22)</li>
- *   <li>GET /myths/orion → 200 + 2 篇神话卡</li>
- *   <li>GET /myths/nonexistent → 404</li>
+ *   <li>GET /myths/orion → 200 + data 数组 2 篇神话卡</li>
+ *   <li>GET /myths/nonexistent → 200 但 code=404(业务错误码,非 HTTP 404)</li>
  *   <li>同参数连调两次 → 第二次走缓存(Cache 条目数仍为 1)</li>
  * </ul>
  */
@@ -65,7 +69,7 @@ class SkyViewControllerTest {
 
     /**
      * 合法参数:lat=39.9, lng=116.4, date=2026-12-22, hour=22 → 200,
-     * JSON 含 visibleStars 数组、constellations 数组、observerLat/lng、date、hour。
+     * JSON 含 code=200、data.visibleStars 数组、data.constellations 数组等。
      *
      * <p>2026-12-22 是冬至,北纬 39.9°(北京)22 点夜空,猎户座等冬季星座应当可见,
      * visibleStars 至少有 1 颗。</p>
@@ -78,19 +82,20 @@ class SkyViewControllerTest {
                         .param("date", "2026-12-22")
                         .param("hour", "22"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.visibleStars").isArray())
-                .andExpect(jsonPath("$.constellations").isArray())
-                .andExpect(jsonPath("$.observerLat").value("39.9000"))
-                .andExpect(jsonPath("$.observerLng").value("116.4000"))
-                .andExpect(jsonPath("$.date").value("2026-12-22"))
-                .andExpect(jsonPath("$.hour").value(22));
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.visibleStars").isArray())
+                .andExpect(jsonPath("$.data.constellations").isArray())
+                .andExpect(jsonPath("$.data.observerLat").value("39.9000"))
+                .andExpect(jsonPath("$.data.observerLng").value("116.4000"))
+                .andExpect(jsonPath("$.data.date").value("2026-12-22"))
+                .andExpect(jsonPath("$.data.hour").value(22));
     }
 
     /**
      * 不传 date 和 hour → 200,使用默认值(今天 + 22 点)。
      *
      * <p>Controller 中 date 缺省走 {@code LocalDate.now()},hour 缺省走
-     * {@code defaultValue = "22"}。响应 hour 字段应为 22,date 字段应为今天。</p>
+     * {@code defaultValue = "22"}。响应 data.hour 字段应为 22,data.date 字段应为今天。</p>
      */
     @Test
     void getSkyView_defaultDateAndHour_usesDefaults() throws Exception {
@@ -99,9 +104,10 @@ class SkyViewControllerTest {
                         .param("lat", "39.9")
                         .param("lng", "116.4"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.visibleStars").isArray())
-                .andExpect(jsonPath("$.hour").value(22))
-                .andExpect(jsonPath("$.date").value(today));
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.visibleStars").isArray())
+                .andExpect(jsonPath("$.data.hour").value(22))
+                .andExpect(jsonPath("$.data.date").value(today));
     }
 
     /**
@@ -118,11 +124,11 @@ class SkyViewControllerTest {
                         .param("date", "2026-12-22")
                         .param("hour", "99"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.hour").value(22));
+                .andExpect(jsonPath("$.data.hour").value(22));
     }
 
     /**
-     * GET /myths/orion → 200,返回 2 篇神话卡(希腊 + 中国)。
+     * GET /myths/orion → 200,data 数组含 2 篇神话卡(希腊 + 中国)。
      *
      * <p>myths.json 中 orion 有 greek 和 chinese 两条记录,
      * ConstellationDataService.getMyths 返回 List<MythCard>,长度 2。</p>
@@ -131,22 +137,24 @@ class SkyViewControllerTest {
     void getMyths_orion_returns2Cards() throws Exception {
         mockMvc.perform(get("/api/v1/sky/myths/orion"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[*].culture").value(
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[*].culture").value(
                         org.hamcrest.Matchers.containsInAnyOrder("greek", "chinese")));
     }
 
     /**
-     * GET /myths/nonexistent → 404。
+     * GET /myths/nonexistent → HTTP 200,但业务 code=404。
      *
-     * <p>Controller 中 myths 为空时返回 {@code ResponseEntity.notFound().build()},
-     * HTTP 状态码 404,无响应体。</p>
+     * <p>Controller 中 myths 为空时返回 {@code ApiResponse.error(404, "...")},
+     * HTTP 状态码仍为 200(Spring 默认),响应体 {@code {code: 404, message: "...", data: null}}。</p>
      */
     @Test
-    void getMyths_unknownConstellation_returns404() throws Exception {
+    void getMyths_unknownConstellation_returns404Code() throws Exception {
         mockMvc.perform(get("/api/v1/sky/myths/nonexistent"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(404));
     }
 
     /**
