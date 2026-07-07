@@ -47,3 +47,48 @@ body {
 .starlight-text {
   text-shadow: 0 0 10px rgba(232, 234, 246, 0.5);
 }
+
+/* Leaflet 暗色主题覆盖:让 popup / zoom 控件融入深空配色 */
+.leaflet-popup-content-wrapper {
+  background: rgba(26, 31, 58, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #e8eaf6;
+  border: 1px solid rgba(232, 234, 246, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+.leaflet-popup-content,
+.leaflet-popup-content strong,
+.leaflet-popup-content div {
+  color: #e8eaf6 !important;
+}
+.leaflet-popup-tip {
+  background: rgba(26, 31, 58, 0.92);
+  border: 1px solid rgba(232, 234, 246, 0.1);
+}
+.leaflet-container a.leaflet-popup-close-button {
+  color: #9fa8da;
+  transition: color 0.2s ease;
+}
+.leaflet-container a.leaflet-popup-close-button:hover {
+  color: #c5a572;
+}
+.leaflet-control-zoom a {
+  background: rgba(26, 31, 58, 0.85) !important;
+  color: #c5a572 !important;
+  border-color: rgba(232, 234, 246, 0.1) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.leaflet-control-zoom a:hover {
+  background: rgba(197, 165, 114, 0.18) !important;
+  color: #e8eaf6 !important;
+}
+.leaflet-control-attribution {
+  background: rgba(10, 14, 26, 0.7) !important;
+  color: rgba(159, 168, 218, 0.6) !important;
+}
+.leaflet-control-attribution a {
+  color: rgba(197, 165, 114, 0.7) !important;
+}
