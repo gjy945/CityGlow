@@ -64,10 +64,18 @@ export default {
     detailSection: '事件详注',
     tipSection: '观测建议',
     bestDirection: '最佳观测方位',
+    filter: {
+      title: '筛选事件类型',
+      all: '全部',
+      AURORA: '极光',
+      NEO: '近地天体',
+    },
     type: {
       METEOR: '流星雨',
       ECLIPSE: '日月食',
       PLANET: '行星动态',
+      AURORA: '极光',
+      NEO: '近地天体',
     },
     tips: {
       METEOR:
@@ -76,6 +84,58 @@ export default {
         '日食须佩戴专业巴德膜滤光镜直视,严禁裸眼;月食肉眼全程可见,望远镜下可观察月面铜红色调变化。',
       PLANET:
         '冲日前后行星最亮且整夜可见,中小型望远镜可分辨行星盘面、土星环系或木星伽利略卫星。',
+      AURORA:
+        '高纬度地区在磁暴期间可肉眼观测到极光,远离光污染、地平线开阔的北向观测点为佳,Kp 指数 ≥ 5 时概率显著上升。',
+      NEO:
+        '近地天体接近时通常仍较暗,需中型望远镜观测;留意其相对恒星的高速位移,可结合星图辨认。',
+    },
+  },
+  aurora: {
+    title: '极光预报',
+    recentCount: '近 30 天地磁暴',
+    recent: '近期事件',
+    warning: '近期有地磁暴活动,高纬度地区可能观测到极光',
+    noActivity: '近期无显著地磁暴活动',
+    loading: '加载极光数据…',
+    error: '极光数据加载失败',
+    solarFlare: '太阳耀斑',
+    gst: '地磁暴',
+  },
+  neo: {
+    title: '近地天体',
+    upcoming: '未来 7 天接近',
+    name: '名称',
+    approachDate: '接近日期',
+    diameter: '估计直径',
+    distance: '距离',
+    hazardous: '潜在危险',
+    velocity: '相对速度',
+    loading: '加载小行星数据…',
+    error: '小行星数据加载失败',
+  },
+  bestWindow: {
+    title: '今晚最佳观测时段',
+    to: '至',
+    reasons: '原因',
+    loading: '计算最佳时段…',
+    error: '无法计算最佳时段',
+  },
+  bortleInfo: {
+    title: 'Bortle 暗空等级说明',
+    level: '等级',
+    description: '描述',
+    magLimit: '肉眼极限星等',
+    environment: '典型环境',
+    levels: {
+      1: { desc: '极佳暗空', env: '荒野、海洋中部' },
+      2: { desc: '真正暗空', env: '典型荒野' },
+      3: { desc: '乡村天空', env: '远郊' },
+      4: { desc: '乡村/郊区过渡', env: '郊区' },
+      5: { desc: '郊区天空', env: '近郊' },
+      6: { desc: '明亮郊区', env: '郊区' },
+      7: { desc: '郊区/城市过渡', env: '城市边缘' },
+      8: { desc: '城市天空', env: '市区' },
+      9: { desc: '内城天空', env: '市中心' },
     },
   },
   postcard: {

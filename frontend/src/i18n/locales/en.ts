@@ -64,10 +64,18 @@ export default {
     detailSection: 'Event details',
     tipSection: 'Observation tips',
     bestDirection: 'Best viewing direction',
+    filter: {
+      title: 'Filter Event Types',
+      all: 'All',
+      AURORA: 'Aurora',
+      NEO: 'NEO',
+    },
     type: {
       METEOR: 'Meteor Shower',
       ECLIPSE: 'Eclipse',
       PLANET: 'Planet',
+      AURORA: 'Aurora',
+      NEO: 'NEO',
     },
     tips: {
       METEOR:
@@ -76,6 +84,58 @@ export default {
         'Solar eclipses require certified Baader-film filters for direct viewing — never naked eyes. Lunar eclipses are visible to the naked eye throughout; telescopes reveal the copper-red hues on the lunar surface.',
       PLANET:
         "Planets are brightest and visible all night around opposition. Small-to-medium telescopes can resolve planetary disks, Saturn's rings, or Jupiter's Galilean moons.",
+      AURORA:
+        'At high latitudes during geomagnetic storms, auroras are visible to the naked eye. Find a dark, open northern horizon; probability rises sharply at Kp ≥ 5.',
+      NEO:
+        'Near-Earth objects remain faint even at close approach; a mid-size telescope is recommended. Look for their rapid drift against background stars and cross-check with a star chart.',
+    },
+  },
+  aurora: {
+    title: 'Aurora Forecast',
+    recentCount: 'Geomagnetic storms (30d)',
+    recent: 'Recent Events',
+    warning: 'Recent geomagnetic activity, aurora possible at high latitudes',
+    noActivity: 'No significant geomagnetic activity',
+    loading: 'Loading aurora data…',
+    error: 'Failed to load aurora data',
+    solarFlare: 'Solar Flare',
+    gst: 'Geomagnetic Storm',
+  },
+  neo: {
+    title: 'Near-Earth Objects',
+    upcoming: 'Approaching (7d)',
+    name: 'Name',
+    approachDate: 'Approach Date',
+    diameter: 'Diameter',
+    distance: 'Distance',
+    hazardous: 'Potentially Hazardous',
+    velocity: 'Velocity',
+    loading: 'Loading NEO data…',
+    error: 'Failed to load NEO data',
+  },
+  bestWindow: {
+    title: "Tonight's Best Window",
+    to: 'to',
+    reasons: 'Reasons',
+    loading: 'Calculating best window…',
+    error: 'Cannot calculate best window',
+  },
+  bortleInfo: {
+    title: 'Bortle Scale Explained',
+    level: 'Level',
+    description: 'Description',
+    magLimit: 'Naked-eye Limit',
+    environment: 'Environment',
+    levels: {
+      1: { desc: 'Excellent dark sky', env: 'Wilderness, mid-ocean' },
+      2: { desc: 'True dark sky', env: 'Typical wilderness' },
+      3: { desc: 'Rural sky', env: 'Remote countryside' },
+      4: { desc: 'Rural/Suburban transition', env: 'Countryside' },
+      5: { desc: 'Suburban sky', env: 'Outer suburbs' },
+      6: { desc: 'Bright suburban sky', env: 'Suburbs' },
+      7: { desc: 'Suburban/Urban transition', env: 'City fringe' },
+      8: { desc: 'City sky', env: 'Urban' },
+      9: { desc: 'Inner-city sky', env: 'City center' },
     },
   },
   postcard: {

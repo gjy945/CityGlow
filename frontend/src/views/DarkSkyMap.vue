@@ -320,8 +320,8 @@ onMounted(() => {
 }
 
 .map-btn--locate {
-  top: 20px;
-  left: 20px;
+  top: 90px;
+  left: 3px;
   width: 48px;
   height: 48px;
   border-radius: 50%;
@@ -524,8 +524,8 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .map-btn--locate {
-    top: 12px;
-    left: 12px;
+    top: 90px;
+    left: 6px;
     width: 42px;
     height: 42px;
   }

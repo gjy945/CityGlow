@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { computed, watch, onMounted } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useForecastStore } from '../stores/forecast'
 import { useFavoritesStore } from '../stores/favorites'
 import { useAuthStore } from '../stores/auth'
 import MoonPhaseCanvas from '../components/MoonPhaseCanvas.vue'
+import BestWindowCard from '../components/BestWindowCard.vue'
+import AuroraCard from '../components/AuroraCard.vue'
+import BortleInfoModal from '../components/BortleInfoModal.vue'
 
 const { t, locale } = useI18n()
 
@@ -137,6 +140,46 @@ async function toggleFavorite() {
     // 错误已记录在 store.error 中,此处忽略
   }
 }
+
+// 后端 moonPhase 为英文字符串(如 "Full Moon"),反查循环位置 phase (0-1)
+// 0=新月 / 0.25=上弦 / 0.5=满月 / 0.75=下弦 / 1=新月
+function moonPhaseToNumber(phase: string | undefined): number {
+  if (!phase) return 0.5
+  const p = phase.trim().toLowerCase()
+  const map: Record<string, number> = {
+    'new moon': 0,
+    'new': 0,
+    '新月': 0,
+    'waxing crescent': 0.125,
+    '蛾眉月': 0.125,
+    'first quarter': 0.25,
+    '上弦月': 0.25,
+    'waxing gibbous': 0.375,
+    '盈凸月': 0.375,
+    'full moon': 0.5,
+    'full': 0.5,
+    '满月': 0.5,
+    'waning gibbous': 0.625,
+    '亏凸月': 0.625,
+    'last quarter': 0.75,
+    'third quarter': 0.75,
+    '下弦月': 0.75,
+    'waning crescent': 0.875,
+    '残月': 0.875,
+  }
+  return map[p] ?? 0.5
+}
+
+const moonPhaseNumber = computed(() => moonPhaseToNumber(data.value?.moonPhase))
+
+// Bortle 详情弹窗
+const bortleModalOpen = ref(false)
+function openBortleModal() {
+  bortleModalOpen.value = true
+}
+function closeBortleModal() {
+  bortleModalOpen.value = false
+}
 </script>
 
 <template>
@@ -212,6 +255,14 @@ async function toggleFavorite() {
         <div v-if="isRefreshing" class="refresh-bar">
           <div class="refresh-bar-inner" />
         </div>
+
+        <!-- 今晚最佳观测时段(顶部) -->
+        <BestWindowCard
+          v-if="hasCoords"
+          :lat="resolvedLat"
+          :lng="resolvedLng"
+          class="forecast-extra-card"
+        />
 
         <!-- 标题 -->
         <header class="forecast-header">
@@ -321,7 +372,7 @@ async function toggleFavorite() {
 
         <!-- 月相 -->
         <div class="forecast-section forecast-moon">
-          <MoonPhaseCanvas :moon-phase="data.moonPhase" :size="100" />
+          <MoonPhaseCanvas :phase="moonPhaseNumber" :size="100" />
           <p class="font-display text-base text-moonlight mt-2">
             {{ data.moonPhase }}
           </p>
@@ -336,12 +387,36 @@ async function toggleFavorite() {
             </span>
           </div>
           <div class="data-row">
-            <span class="data-label">{{ t('forecast.bortle') }}</span>
+            <span class="data-label">
+              {{ t('forecast.bortle') }}
+              <button
+                type="button"
+                class="bortle-help-btn"
+                :aria-label="t('bortleInfo.title')"
+                :title="t('bortleInfo.title')"
+                @click="openBortleModal"
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1" />
+                  <path
+                    d="M4.6 4.6 C4.6 3.7 5.2 3.1 6 3.1 C6.8 3.1 7.4 3.7 7.4 4.5 C7.4 5.1 6.9 5.4 6.5 5.7 C6.2 5.9 6 6.1 6 6.5 V6.8"
+                    stroke="currentColor"
+                    stroke-width="1"
+                    stroke-linecap="round"
+                    fill="none"
+                  />
+                  <circle cx="6" cy="8.4" r="0.5" fill="currentColor" />
+                </svg>
+              </button>
+            </span>
             <span class="data-value">
               {{ data.bortleLevel }}<span class="data-unit">{{ t('common.levelUnit') }}</span>
             </span>
           </div>
         </div>
+
+        <!-- 极光预报(底部) -->
+        <AuroraCard class="forecast-extra-card" />
 
         <!-- 时间轴 -->
         <div class="forecast-section forecast-timeline">
@@ -363,6 +438,9 @@ async function toggleFavorite() {
         </div>
       </div>
     </div>
+
+    <!-- Bortle 等级详情弹窗 -->
+    <BortleInfoModal :open="bortleModalOpen" @close="closeBortleModal" />
   </component>
 </template>
 
@@ -560,6 +638,40 @@ async function toggleFavorite() {
   font-size: 13px;
   color: rgba(232, 234, 246, 0.55);
   letter-spacing: 0.05em;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Bortle 帮助按钮 */
+.bortle-help-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid rgba(197, 165, 114, 0.35);
+  color: rgba(197, 165, 114, 0.7);
+  cursor: pointer;
+  transition: all 0.22s ease;
+}
+
+.bortle-help-btn:hover {
+  color: #c5a572;
+  border-color: rgba(197, 165, 114, 0.7);
+  background: rgba(197, 165, 114, 0.12);
+  transform: scale(1.1);
+}
+
+/* 额外卡片(最佳观测时段 / 极光预报) */
+.forecast-extra-card {
+  margin-top: 16px;
+}
+.forecast-extra-card:first-child {
+  margin-top: 0;
 }
 .data-value {
   font-family: 'JetBrains Mono', monospace;

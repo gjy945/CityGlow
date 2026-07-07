@@ -1,6 +1,8 @@
 package com.cityglow.service;
 
 import com.cityglow.domain.NasaApodResponse;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -32,13 +34,16 @@ class NasaApodClientTest {
     private RestClient.Builder restClientBuilder;
     private MockRestServiceServer mockServer;
     private NasaApodClient client;
+    private Cache<String, NasaApodResponse> apodCache;
 
     @BeforeEach
     void setUp() {
         restClientBuilder = RestClient.builder();
         mockServer = MockRestServiceServer.bindTo(restClientBuilder).build();
+        // 每个测试使用独立的 Caffeine 缓存,避免缓存污染跨测试
+        apodCache = Caffeine.newBuilder().build();
         // apiKey 用测试占位符(测试中不真实发请求,只校验请求 URL 含 api_key)
-        client = new NasaApodClient(restClientBuilder, "test-nasa-key");
+        client = new NasaApodClient(restClientBuilder, "test-nasa-key", apodCache);
     }
 
     /**
@@ -120,6 +125,47 @@ class NasaApodClientTest {
         assertThat(resp).isNotNull();
         assertThat(resp.title()).isEqualTo("Historical APOD");
         assertThat(resp.date()).isEqualTo("2026-01-01");
+        mockServer.verify();
+    }
+
+    /**
+     * 缓存验证:同一 date 第二次调用应命中缓存,不再发 HTTP 请求。
+     *
+     * <p>验证 apodCache 命中行为:</p>
+     * <ul>
+     *   <li>第一次调用 → mockServer 收到 1 次请求,结果写入缓存。</li>
+     *   <li>第二次调用 → 缓存命中,不再发请求。</li>
+     *   <li>两次返回的 NasaApodResponse 引用相同。</li>
+     * </ul>
+     *
+     * <p>关键:第二次调用前不再设置 mockServer.expect,
+     * 若 client 真的发请求,mockServer.verify() 会因未满足的期望而失败。</p>
+     */
+    @Test
+    void getApod_secondCall_hitsCacheWithoutHttpCall() {
+        String json = "{"
+                + "\"title\":\"Cached APOD\","
+                + "\"explanation\":\"缓存测试。\","
+                + "\"url\":\"https://apod.nasa.gov/apod/image/cached.jpg\","
+                + "\"media_type\":\"image\","
+                + "\"date\":\"2026-07-07\""
+                + "}";
+        // 只 expect 1 次请求(第一次调用)
+        mockServer.expect(requestTo(org.hamcrest.Matchers.startsWith(BASE_URL)))
+                .andExpect(queryParam("api_key", "test-nasa-key"))
+                .andExpect(queryParam("date", "2026-07-07"))
+                .andRespond(withSuccess(json, MediaType.APPLICATION_JSON));
+
+        // 第一次调用 → cache miss → 发 HTTP 请求
+        NasaApodResponse first = client.getApod("2026-07-07");
+        // 第二次调用 → cache hit → 不发请求
+        NasaApodResponse second = client.getApod("2026-07-07");
+
+        assertThat(first).isNotNull();
+        assertThat(first.title()).isEqualTo("Cached APOD");
+        // 缓存命中返回同一对象引用
+        assertThat(second).isSameAs(first);
+        // mockServer.verify() 校验只发了 1 次请求(若第二次也发了会失败)
         mockServer.verify();
     }
 }

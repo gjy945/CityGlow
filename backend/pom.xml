@@ -63,6 +63,12 @@
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
+        <!-- Caffeine 本地缓存:NASA API 与 forecast 结果缓存 -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+            <version>3.1.8</version>
+        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>

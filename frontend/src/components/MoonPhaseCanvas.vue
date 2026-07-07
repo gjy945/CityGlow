@@ -2,51 +2,28 @@
 import { ref, watch, onMounted } from 'vue'
 
 interface Props {
-  moonPhase: string
+  // 月相循环位置:0=新月,0.25=上弦月,0.5=满月,0.75=下弦月,1=新月
+  phase: number
+  // Canvas 尺寸(px)
   size?: number
 }
-const props = withDefaults(defineProps<Props>(), { size: 120 })
+const props = withDefaults(defineProps<Props>(), { size: 80 })
 
 const canvas = ref<HTMLCanvasElement>()
 let currentFraction = 0.5
 let currentWaxing = true
 let rafId: number | null = null
 
-function phaseToFraction(phase: string): number {
-  switch (phase) {
-    case 'New Moon':
-      return 0
-    case 'Full Moon':
-      return 1
-    case 'First Quarter':
-    case 'Last Quarter':
-      return 0.5
-    case 'Waxing Crescent':
-    case 'Waning Crescent':
-      return 0.25
-    case 'Waxing Gibbous':
-    case 'Waning Gibbous':
-      return 0.75
-    default:
-      return 0.5
-  }
+// 将循环位置 (0-1) 转为照亮比例 (0=全暗,1=全亮) 与盈亏方向
+function phaseToFraction(phase: number): number {
+  const p = ((phase % 1) + 1) % 1
+  if (p <= 0.5) return p * 2 // 0→0, 0.25→0.5, 0.5→1
+  return (1 - p) * 2 // 0.5→1, 0.75→0.5, 1→0
 }
-
-function phaseIsWaxing(phase: string): boolean {
-  switch (phase) {
-    case 'First Quarter':
-    case 'Waxing Crescent':
-    case 'Waxing Gibbous':
-    case 'New Moon':
-    case 'Full Moon':
-      return true
-    case 'Last Quarter':
-    case 'Waning Gibbous':
-    case 'Waning Crescent':
-      return false
-    default:
-      return true
-  }
+function phaseIsWaxing(phase: number): boolean {
+  const p = ((phase % 1) + 1) % 1
+  // 0-0.5 为盈(右亮),0.5-1 为亏(左亮)
+  return p < 0.5
 }
 
 function setupCanvas() {
@@ -75,8 +52,8 @@ function draw(fraction: number, waxing: boolean) {
 
   // 外层月光光晕
   const glow = ctx.createRadialGradient(cx, cy, r * 0.85, cx, cy, r * 1.7)
-  glow.addColorStop(0, 'rgba(159, 168, 218, 0.32)')
-  glow.addColorStop(1, 'rgba(159, 168, 218, 0)')
+  glow.addColorStop(0, 'rgba(245, 230, 200, 0.32)')
+  glow.addColorStop(1, 'rgba(245, 230, 200, 0)')
   ctx.fillStyle = glow
   ctx.beginPath()
   ctx.arc(cx, cy, r * 1.7, 0, Math.PI * 2)
@@ -91,7 +68,7 @@ function draw(fraction: number, waxing: boolean) {
   // 亮面区域
   const f = Math.max(0, Math.min(1, fraction))
   if (f > 0.001) {
-    // 亮面渐变:左上偏亮,右下偏暗,模拟立体感
+    // 亮面渐变:左上偏亮,右下偏暗,模拟立体感(月光色 #f5e6c8)
     const litGrad = ctx.createRadialGradient(
       cx - r * 0.3,
       cy - r * 0.3,
@@ -100,9 +77,9 @@ function draw(fraction: number, waxing: boolean) {
       cy,
       r,
     )
-    litGrad.addColorStop(0, '#f4f5fb')
-    litGrad.addColorStop(0.6, '#e8eaf6')
-    litGrad.addColorStop(1, '#c3c8e8')
+    litGrad.addColorStop(0, '#fbf3df')
+    litGrad.addColorStop(0.55, '#f5e6c8')
+    litGrad.addColorStop(1, '#d8c195')
     ctx.fillStyle = litGrad
     drawLitRegion(ctx, cx, cy, r, f, waxing)
   }
@@ -162,7 +139,6 @@ function animateTo(targetFraction: number, targetWaxing: boolean) {
   const startFraction = currentFraction
   const startTime = performance.now()
   const duration = 450
-  // 盈亏方向离散切换(实际月相变更罕见,瞬间切换可接受)
   currentWaxing = targetWaxing
 
   function step(now: number) {
@@ -181,11 +157,10 @@ function animateTo(targetFraction: number, targetWaxing: boolean) {
 }
 
 watch(
-  () => props.moonPhase,
+  () => props.phase,
   (next) => {
-    if (next) {
-      animateTo(phaseToFraction(next), phaseIsWaxing(next))
-    }
+    if (next == null || Number.isNaN(next)) return
+    animateTo(phaseToFraction(next), phaseIsWaxing(next))
   },
 )
 
@@ -199,8 +174,8 @@ watch(
 
 onMounted(() => {
   setupCanvas()
-  currentFraction = phaseToFraction(props.moonPhase)
-  currentWaxing = phaseIsWaxing(props.moonPhase)
+  currentFraction = phaseToFraction(props.phase)
+  currentWaxing = phaseIsWaxing(props.phase)
   draw(currentFraction, currentWaxing)
 })
 </script>
@@ -212,6 +187,6 @@ onMounted(() => {
 <style scoped>
 .moon-phase-canvas {
   display: block;
-  filter: drop-shadow(0 0 18px rgba(159, 168, 218, 0.28));
+  filter: drop-shadow(0 0 18px rgba(245, 230, 200, 0.28));
 }
 </style>

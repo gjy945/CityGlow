@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useEventsStore } from '../stores/events'
 import type { AstroEvent } from '../api/events'
+import NeoWidget from '../components/NeoWidget.vue'
 
 const { t, locale } = useI18n()
 const eventsStore = useEventsStore()
@@ -25,6 +26,30 @@ const sortedEvents = computed(() =>
   [...eventsStore.list].sort(
     (a, b) => new Date(a.eventTime).getTime() - new Date(b.eventTime).getTime(),
   ),
+)
+
+// 事件类型筛选(默认全选)
+type EventType = 'METEOR' | 'ECLIPSE' | 'PLANET' | 'AURORA' | 'NEO'
+const filterTypes: EventType[] = ['METEOR', 'ECLIPSE', 'PLANET', 'AURORA', 'NEO']
+const enabledFilters = ref<Set<EventType>>(new Set(filterTypes))
+
+function toggleFilter(type: EventType) {
+  const next = new Set(enabledFilters.value)
+  if (next.has(type)) {
+    // 至少保留一个,避免全空
+    if (next.size > 1) next.delete(type)
+  } else {
+    next.add(type)
+  }
+  enabledFilters.value = next
+}
+
+function selectAllFilters() {
+  enabledFilters.value = new Set(filterTypes)
+}
+
+const filteredEvents = computed(() =>
+  sortedEvents.value.filter((e) => enabledFilters.value.has(e.eventType as EventType)),
 )
 
 const nextEvent = computed(() => {
@@ -79,6 +104,18 @@ function typeOf(type: string): TypeMeta {
       color: '#e8eaf6',
       glow: 'rgba(232, 234, 246, 0.55)',
       tip: t('timeline.tips.PLANET'),
+    },
+    AURORA: {
+      label: t('timeline.type.AURORA'),
+      color: '#4ade80',
+      glow: 'rgba(74, 222, 128, 0.55)',
+      tip: t('timeline.tips.AURORA'),
+    },
+    NEO: {
+      label: t('timeline.type.NEO'),
+      color: '#f59e0b',
+      glow: 'rgba(245, 158, 11, 0.55)',
+      tip: t('timeline.tips.NEO'),
     },
   }
   return map[type] ?? map.PLANET
@@ -247,9 +284,38 @@ onMounted(() => {
         </div>
       </div>
 
+      <!-- 事件类型筛选栏 -->
+      <div v-if="sortedEvents.length" class="filter-bar">
+        <p class="filter-title font-mono">{{ t('timeline.filter.title') }}</p>
+        <div class="filter-tags">
+          <button
+            type="button"
+            class="filter-tag"
+            :class="{ 'filter-tag--active': enabledFilters.size === filterTypes.length }"
+            @click="selectAllFilters"
+          >
+            {{ t('timeline.filter.all') }}
+          </button>
+          <button
+            v-for="tp in filterTypes"
+            :key="tp"
+            type="button"
+            class="filter-tag"
+            :class="[
+              `filter-tag--${tp.toLowerCase()}`,
+              { 'filter-tag--active': enabledFilters.has(tp) },
+            ]"
+            :style="{ '--tag-color': typeOf(tp).color }"
+            @click="toggleFilter(tp)"
+          >
+            {{ typeOf(tp).label }}
+          </button>
+        </div>
+      </div>
+
       <!-- 时间轴 -->
       <div
-        v-if="sortedEvents.length"
+        v-if="filteredEvents.length"
         ref="scrollEl"
         class="timeline-scroll"
         @wheel="onWheel"
@@ -260,7 +326,7 @@ onMounted(() => {
             <span class="line-cap line-cap--right"></span>
           </div>
           <article
-            v-for="event in sortedEvents"
+            v-for="event in filteredEvents"
             :key="event.id"
             class="timeline-item"
             :class="[typeClass(event.eventType), { 'timeline-item--next': isNext(event) }]"
@@ -285,6 +351,18 @@ onMounted(() => {
                   <svg v-else-if="event.eventType === 'ECLIPSE'" viewBox="0 0 24 24" width="18" height="18">
                     <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.4" />
                     <path d="M12 3.5 A8.5 8.5 0 0 1 12 20.5 Z" fill="currentColor" opacity="0.55" />
+                  </svg>
+                  <!-- AURORA: 极光波带 -->
+                  <svg v-else-if="event.eventType === 'AURORA'" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                    <path d="M3 16 C6 10, 9 14, 12 8 C15 4, 18 10, 21 6" />
+                    <path d="M3 20 C6 15, 9 18, 12 13 C15 10, 18 15, 21 12" opacity="0.6" />
+                  </svg>
+                  <!-- NEO: 小行星 -->
+                  <svg v-else-if="event.eventType === 'NEO'" viewBox="0 0 24 24" width="18" height="18">
+                    <circle cx="11" cy="12" r="5.5" fill="currentColor" opacity="0.85" />
+                    <circle cx="9" cy="10" r="1" fill="rgba(0,0,0,0.25)" />
+                    <circle cx="12" cy="13" r="0.7" fill="rgba(0,0,0,0.25)" />
+                    <ellipse cx="11" cy="12" rx="10" ry="3" transform="rotate(-22 11 12)" fill="none" stroke="currentColor" stroke-width="1" opacity="0.55" />
                   </svg>
                   <!-- PLANET: 行星环 -->
                   <svg v-else viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.4">
@@ -315,6 +393,14 @@ onMounted(() => {
         </p>
       </div>
 
+      <!-- 已筛选无事件 -->
+      <div v-else-if="sortedEvents.length" class="timeline-state">
+        <p class="font-display text-2xl text-starlight/70">{{ t('timeline.filter.title') }}</p>
+        <p class="font-mono text-[10px] text-moonlight/50 mt-3">
+          {{ t('timeline.empty') }}
+        </p>
+      </div>
+
       <!-- 空态/错误 -->
       <div v-else class="timeline-state">
         <p class="font-display text-2xl text-starlight/70">{{ t('timeline.empty') }}</p>
@@ -324,9 +410,14 @@ onMounted(() => {
       </div>
 
       <!-- 滚动提示 -->
-      <p v-if="sortedEvents.length" class="scroll-hint font-mono">
+      <p v-if="filteredEvents.length" class="scroll-hint font-mono">
         {{ t('timeline.scrollHint') }}
       </p>
+
+      <!-- 近地天体区块(时间轴下方) -->
+      <div class="neo-section">
+        <NeoWidget :days="7" :top-n="5" />
+      </div>
     </div>
 
     <!-- 详情 Modal -->
@@ -359,6 +450,17 @@ onMounted(() => {
               <svg v-else-if="selected.eventType === 'ECLIPSE'" viewBox="0 0 48 48" width="40" height="40">
                 <circle cx="24" cy="24" r="17" fill="none" stroke="currentColor" stroke-width="1.2" />
                 <path d="M24 7 A17 17 0 0 1 24 41 Z" fill="currentColor" opacity="0.55" />
+              </svg>
+              <svg v-else-if="selected.eventType === 'AURORA'" viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+                <path d="M4 30 C10 18, 18 26, 24 14 C30 4, 38 18, 44 10" />
+                <path d="M4 38 C10 28, 18 32, 24 24 C30 18, 38 28, 44 22" opacity="0.6" />
+              </svg>
+              <svg v-else-if="selected.eventType === 'NEO'" viewBox="0 0 48 48" width="40" height="40">
+                <circle cx="22" cy="24" r="11" fill="currentColor" opacity="0.85" />
+                <circle cx="18" cy="20" r="2" fill="rgba(0,0,0,0.25)" />
+                <circle cx="24" cy="26" r="1.4" fill="rgba(0,0,0,0.25)" />
+                <circle cx="20" cy="28" r="1" fill="rgba(0,0,0,0.25)" />
+                <ellipse cx="22" cy="24" rx="20" ry="6" transform="rotate(-22 22 24)" fill="none" stroke="currentColor" stroke-width="1" opacity="0.55" />
               </svg>
               <svg v-else viewBox="0 0 48 48" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.2">
                 <circle cx="24" cy="24" r="9" />
@@ -534,6 +636,64 @@ onMounted(() => {
   padding-bottom: 4px;
 }
 
+/* 事件类型筛选栏 */
+.filter-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 32px;
+}
+.filter-title {
+  font-size: 10px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: rgba(197, 165, 114, 0.7);
+}
+.filter-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.filter-tag {
+  font-family: 'Manrope', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(10, 14, 26, 0.4);
+  border: 1px solid rgba(197, 165, 114, 0.3);
+  color: rgba(232, 234, 246, 0.6);
+  cursor: pointer;
+  transition: all 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.filter-tag:hover {
+  color: var(--tag-color, #c5a572);
+  border-color: rgba(197, 165, 114, 0.55);
+  background: rgba(197, 165, 114, 0.08);
+}
+.filter-tag--active {
+  color: #0a0e1a;
+  background: var(--tag-color, #c5a572);
+  border-color: var(--tag-color, #c5a572);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--tag-color, #c5a572) 45%, transparent);
+}
+/* 当类型颜色与背景对比不足时(如 PLANET #e8eaf6 / AURORA #4ade80),仍可读 */
+.filter-tag--planet.filter-tag--active,
+.filter-tag--aurora.filter-tag--active {
+  color: #0a0e1a;
+}
+
+/* 近地天体区块 */
+.neo-section {
+  margin-top: 56px;
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 /* 时间轴滚动 */
 .timeline-scroll {
   overflow-x: auto;
@@ -607,6 +767,14 @@ onMounted(() => {
 .timeline-item.type-planet {
   --type-color: #e8eaf6;
   --type-glow: rgba(232, 234, 246, 0.45);
+}
+.timeline-item.type-aurora {
+  --type-color: #4ade80;
+  --type-glow: rgba(74, 222, 128, 0.5);
+}
+.timeline-item.type-neo {
+  --type-color: #f59e0b;
+  --type-glow: rgba(245, 158, 11, 0.5);
 }
 
 .timeline-node {

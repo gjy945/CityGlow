@@ -5,6 +5,7 @@ import com.cityglow.domain.FavoriteResponse;
 import com.cityglow.entity.FavoriteLocation;
 import com.cityglow.repository.FavoriteLocationRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -67,10 +68,13 @@ public class FavoriteService {
     /**
      * 按坐标删除收藏(不存在时静默忽略,保证幂等)。
      *
+     * <p>JPA 的 deleteBy 需要事务,否则抛 TransactionRequiredException。</p>
+     *
      * @param userId    用户 id
      * @param latitude  纬度
      * @param longitude 经度
      */
+    @Transactional
     public void remove(Long userId, double latitude, double longitude) {
         favoriteRepository.deleteByUserIdAndLatitudeAndLongitude(userId, latitude, longitude);
     }

@@ -7,6 +7,8 @@ import com.cityglow.util.Messages;
 import com.cityglow.util.MoonPhaseCalculator;
 import com.cityglow.util.MoonPhaseDescription;
 import com.cityglow.util.StargazingIndex;
+import com.github.benmanes.caffeine.cache.Cache;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -27,6 +29,11 @@ import java.util.Locale;
  *
  * <p><b>多语言</b>:Locale 由 Controller 解析 Accept-Language 后传入,
  * 默认 zh(见 {@link Messages#DEFAULT_LOCALE})。</p>
+ *
+ * <p><b>缓存</b>:{@link #forecast(double, double)} 注入 {@code forecastCache},
+ * key 格式 {@code lat,lng}(保留 4 位小数),TTL 10 分钟。
+ * 命中直接返回,miss 时计算并写入缓存。
+ * 含 Locale 参数的重载方法不参与缓存,以便不同语言请求都能拿到对应描述。</p>
  */
 @Service
 public class ForecastService {
@@ -37,32 +44,39 @@ public class ForecastService {
     /** 温度兜底值(摄氏度)。 */
     private static final double DEFAULT_TEMPERATURE_C = 15.0;
 
-    private final OpenMeteoClient openMeteoClient;
+    /** 缓存 key 经纬度保留小数位数。 */
+    private static final int KEY_SCALE = 4;
 
-    public ForecastService(OpenMeteoClient openMeteoClient) {
+    private final OpenMeteoClient openMeteoClient;
+    private final Cache<String, ForecastResult> forecastCache;
+
+    public ForecastService(
+            OpenMeteoClient openMeteoClient,
+            @Qualifier("forecastCache") Cache<String, ForecastResult> forecastCache) {
         this.openMeteoClient = openMeteoClient;
+        this.forecastCache = forecastCache;
     }
 
     /**
-     * 计算给定经纬度的观星预报(默认中文)。
+     * 计算给定经纬度的观星预报(默认中文),先查缓存。
      *
      * @param lat 纬度
      * @param lng 经度
      * @return 观星预报结果
-     * @throws RuntimeException 若 Open-Meteo 调用失败
      */
     public ForecastResult forecast(double lat, double lng) {
-        return forecast(lat, lng, Messages.DEFAULT_LOCALE);
+        String key = formatKey(lat, lng);
+        // 缓存命中直接返回;miss 时调用 forecast(lat, lng, default locale) 并写入缓存
+        return forecastCache.get(key, k -> forecast(lat, lng, Messages.DEFAULT_LOCALE));
     }
 
     /**
-     * 计算给定经纬度的观星预报,使用指定 Locale 输出多语言描述。
+     * 计算给定经纬度的观星预报,使用指定 Locale 输出多语言描述(不查缓存)。
      *
      * @param lat    纬度
      * @param lng    经度
      * @param locale 语言(zh/en/ja,其他回退到 zh)
      * @return 观星预报结果(含 score/cloudCover/moonPhase/bortleLevel/bortleDescription/message/sunrise/sunset)
-     * @throws RuntimeException 若 Open-Meteo 调用失败
      */
     public ForecastResult forecast(double lat, double lng, Locale locale) {
         int bortleLevel = BortleEstimator.estimate(lat, lng);
@@ -95,5 +109,16 @@ public class ForecastService {
         return new ForecastResult(
                 score, cloudCover, moonPhaseDesc, bortleLevel, bortleDesc,
                 message, sunrise, sunset);
+    }
+
+    /**
+     * 构造缓存 key:格式 {@code lat,lng},保留 4 位小数。
+     *
+     * @param lat 纬度
+     * @param lng 经度
+     * @return 缓存 key 字符串
+     */
+    private String formatKey(double lat, double lng) {
+        return String.format(Locale.ROOT, "%." + KEY_SCALE + "f,%.4f", lat, lng);
     }
 }

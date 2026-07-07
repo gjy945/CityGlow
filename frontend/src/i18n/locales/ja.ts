@@ -64,10 +64,18 @@ export default {
     detailSection: 'イベント詳注',
     tipSection: '観測アドバイス',
     bestDirection: '最適な観測方向',
+    filter: {
+      title: 'イベント種別絞込',
+      all: '全て',
+      AURORA: 'オーロラ',
+      NEO: '地球近傍天体',
+    },
     type: {
       METEOR: '流星群',
       ECLIPSE: '日食・月食',
       PLANET: '惑星動態',
+      AURORA: 'オーロラ',
+      NEO: '地球近傍天体',
     },
     tips: {
       METEOR:
@@ -76,6 +84,58 @@ export default {
         '日食は必ず専門のバーダーフィルムで直視してください。裸眼は厳禁です。月食は肉眼で全過程を観察でき、望遠鏡で月面の銅赤色の変化が見えます。',
       PLANET:
         '衝の前後は惑星が最も明るく終夜観測できます。中小型望遠鏡で惑星の円盤・土星の環・木星のガリレオ衛星を分辨できます。',
+      AURORA:
+        '高緯度地域では磁気嵐の間にオーロラが肉眼で見えます。光害の少ない北側の地平線が開けた場所が良好です。Kp ≥ 5 で確率が大幅に上昇します。',
+      NEO:
+        '地球近傍天体は接近時でも暗く、中型望遠鏡が必要です。背景星に対する高速な移動に注目し、星図で確認してください。',
+    },
+  },
+  aurora: {
+    title: 'オーロラ予報',
+    recentCount: '地磁気嵐 (30日)',
+    recent: '最近のイベント',
+    warning: '最近の地磁気活動、高緯度でオーロラの可能性',
+    noActivity: '顕著な地磁気活動なし',
+    loading: 'オーロラデータ読み込み中…',
+    error: 'オーロラデータの読み込みに失敗',
+    solarFlare: '太陽フレア',
+    gst: '地磁気嵐',
+  },
+  neo: {
+    title: '地球近傍天体',
+    upcoming: '接近 (7日)',
+    name: '名称',
+    approachDate: '接近日',
+    diameter: '直径',
+    distance: '距離',
+    hazardous: '潜在的危険',
+    velocity: '相対速度',
+    loading: 'NEOデータ読み込み中…',
+    error: 'NEOデータの読み込みに失敗',
+  },
+  bestWindow: {
+    title: '今夜の最適観測時間帯',
+    to: '〜',
+    reasons: '理由',
+    loading: '最適時間帯を計算中…',
+    error: '最適時間帯を計算できません',
+  },
+  bortleInfo: {
+    title: 'ボートル等級説明',
+    level: '等級',
+    description: '説明',
+    magLimit: '肉眼限界等級',
+    environment: '環境',
+    levels: {
+      1: { desc: '極めて暗い夜空', env: '荒野・海洋中央部' },
+      2: { desc: '真の暗夜', env: '典型な荒野' },
+      3: { desc: '田舎の夜空', env: '遠隔地' },
+      4: { desc: '田舎/郊外の遷移', env: '郊外' },
+      5: { desc: '郊外の夜空', env: '外縁郊外' },
+      6: { desc: '明るい郊外', env: '郊外' },
+      7: { desc: '郊外/都市の遷移', env: '都市周縁' },
+      8: { desc: '都市の夜空', env: '市街地' },
+      9: { desc: '都心の夜空', env: '市中心部' },
     },
   },
   postcard: {
