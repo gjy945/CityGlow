@@ -5,6 +5,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 import java.time.LocalDate;
@@ -66,16 +67,30 @@ public class NasaApodClient {
     /**
      * 实际调用 NASA APOD API(缓存 miss 时触发)。
      *
+     * <p>NASA 按 UTC 时间每日更新,有时当天数据尚未生成(返回 404)。
+     * 此方法在 404 时自动回退到前一天重试,最多回退 3 天,
+     * 全部失败则抛 RuntimeException 由上层处理。</p>
+     *
      * @param date 日期字符串 YYYY-MM-DD
      * @return APOD 响应
      */
     private NasaApodResponse fetchApodFromApi(String date) {
-        return restClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .queryParam("api_key", apiKey)
-                        .queryParam("date", date)
-                        .build())
-                .retrieve()
-                .body(NasaApodResponse.class);
+        LocalDate current = LocalDate.parse(date, ISO_DATE);
+        // 最多回退 3 天:NASA 偶发当日数据未生成(UTC 时差 / 节假日延迟)
+        for (int i = 0; i <= 3; i++) {
+            String tryDate = current.minusDays(i).format(ISO_DATE);
+            try {
+                return restClient.get()
+                        .uri(uriBuilder -> uriBuilder
+                                .queryParam("api_key", apiKey)
+                                .queryParam("date", tryDate)
+                                .build())
+                        .retrieve()
+                        .body(NasaApodResponse.class);
+            } catch (HttpClientErrorException.NotFound e) {
+                // 当天数据未生成,继续回退到前一天
+            }
+        }
+        throw new RuntimeException("NASA APOD 连续 4 天均无数据,可能是 API 故障");
     }
 }
