@@ -10,8 +10,10 @@
 2. [首次启动](#2-首次启动)
 3. [IDEA 中运行(推荐)](#3-idea-中运行推荐)
 4. [功能模块操作](#4-功能模块操作)
-5. [常见问题排查](#5-常见问题排查)
-6. [API 速查](#6-api-速查)
+5. [多语言切换](#5-多语言切换)
+6. [用户系统与收藏](#6-用户系统与收藏)
+7. [常见问题排查](#7-常见问题排查)
+8. [API 速查](#8-api-速查)
 
 ---
 
@@ -62,7 +64,7 @@ Windows:
 CityGlow/
 ├── backend/          # Spring Boot 后端
 ├── frontend/         # Vue3 前端
-└── docs/plans/       # 设计文档
+└── docs/             # 文档(含本手册)
 ```
 
 ### 2.2 配置后端环境变量(关键!)
@@ -92,6 +94,9 @@ MYSQL_PASSWORD=你的MySQL密码       # ← 改这里,例如 123456
 
 # NASA APOD API Key(申请: https://api.nasa.gov/)
 NASA_APOD_API_KEY=你的key          # ← 已提供:INoZW4trwlgvV9sKjpD4DpzWGV3GOkw5Xz0IjFCe
+
+# JWT 密钥(用户认证用,随便填一串字符,长度 ≥ 32)
+JWT_SECRET=your-super-secret-key-for-jwt-signing-change-this-in-production-please
 ```
 
 > ⚠️ `.env` 文件已被 `.gitignore` 排除,不会提交到 git,可安全存放密钥。
@@ -189,6 +194,7 @@ VITE v8.x  ready in xxx ms
 | 点击左上角「定位」圆形按钮 | 定位到当前位置(需浏览器授权地理位置) |
 | 点击右上角 APOD 缩略图 | 弹出 NASA 每日天文一图大图 + 科普说明 |
 | 点击地图上的彩色圆点 | 查看该位置的天文事件标记 |
+| 点击标记弹窗里的「Bortle 详情」 | 弹出 Bortle 9 级光污染等级说明 |
 
 **地图元素说明**:
 - 暗色底图:CartoDB Dark Matter(无 key)
@@ -213,7 +219,7 @@ VITE v8.x  ready in xxx ms
 │   今夜极佳!         │ ← 文字描述
 ├─────────────────────┤
 │  [月相Canvas图]     │ ← 月相可视化
-│  New Moon           │
+│  新月               │
 ├─────────────────────┤
 │  云量    10%        │
 │  Bortle  3级        │ ← 光污染等级(1=极佳,9=内城)
@@ -251,7 +257,38 @@ VITE v8.x  ready in xxx ms
 
 **NEXT 标记**:下一个即将发生的事件会有脉冲动画 + 「NEXT」角标。
 
-### 4.4 模块 4:星空打卡明信片
+### 4.4 模块 4:星图连接器(星座神话)
+
+**入口**:导航「星图」或 http://localhost:5173/sky
+
+**功能**:根据你的位置和当前时间,实时计算并渲染今晚当地可见的星空,
+包括 12 个主要星座的星点 + 连线 + 希腊神话 / 中国古代星宿对照卡。
+
+**操作**:
+
+| 操作 | 效果 |
+|---|---|
+| 进入页面 | 自动定位 + 显示今晚 22:00 的星空 |
+| 拖动时间滑块 | 星空实时旋转(0-24 小时,防抖 200ms) |
+| 改日期 | 查看不同日期的星空 |
+| 点击「定位」按钮 | 重新定位到当前位置 |
+| 点击「收藏点」下拉 | 选择已收藏的观测点切换位置 |
+| **鼠标悬停星座** | 该星座高亮(连线 100% + 辉光),其他降透明度 |
+| **点击星座** | 弹出神话故事卡(双栏:希腊 \| 中国) |
+| 卡片底部按钮 | 切换「双栏 / 只看希腊 / 只看中国」 |
+| 点击「加入星图明信片」 | 跳转到星空明信片页面 |
+| ESC / 点遮罩 | 关闭神话卡 |
+
+**12 个 MVP 星座**:猎户座 / 大熊座(北斗七星)/ 天蝎座 / 仙后座 / 天琴座 / 天鹰座 / 天鹅座 / 狮子座 / 处女座 / 双子座 / 金牛座 / 小熊座(北极星)
+
+**视觉美学**:17 世纪铜版画星图 × 东方水墨。
+- 背景:深空黑 `#050811`(比主背景更深)
+- 星点:暖白,大小按视星等
+- 星座连线:暗金 `#c5a572` 60% 透明
+- 地平线环 + 16 方位刻度(N/NNE/NE/...)
+- 四角铜版画装饰角花
+
+### 4.5 模块 5:星空明信片
 
 **入口**:导航「星空明信片」或 http://localhost:5173/postcard
 
@@ -287,9 +324,75 @@ VITE v8.x  ready in xxx ms
 
 ---
 
-## 5. 常见问题排查
+## 5. 多语言切换
 
-### 5.1 后端启动报 `Unable to determine Dialect`
+**位置**:导航栏右侧的语言切换器(🌐 图标)
+
+**支持语言**:
+- 🇨🇳 中文(默认)
+- 🇺🇸 English
+- 🇯🇵 日本語
+
+**切换效果**:
+- 导航菜单
+- 页面标题与文案
+- 观星指数描述
+- 月相名称(如"新月" → "New Moon" → "新月")
+- Bortle 等级描述
+- 神话故事卡暂未本地化(希腊神话 + 中国星宿对照保留原文)
+
+---
+
+## 6. 用户系统与收藏
+
+### 6.1 注册 / 登录
+
+**入口**:导航栏「登录」或 http://localhost:5173/login
+
+**注册**:
+1. 切换到「注册」标签
+2. 填写用户名(3-50 字符)+ 密码(6-100 字符)
+3. 点「注册」→ 成功后自动登录并跳转首页
+
+**登录**:
+1. 填写用户名 + 密码
+2. 点「登录」→ 成功后跳转首页
+3. JWT Token 存在 localStorage,刷新不丢失
+4. 导航栏右侧显示用户名 + 「退出」按钮
+
+**安全**:
+- 密码用 BCrypt 哈希存储(不存明文)
+- JWT 签名 + 过期校验
+- 所有 `/api/v1/favorites/**` 接口需 JWT 鉴权
+
+### 6.2 收藏观测点
+
+**前置条件**:已登录
+
+**收藏**:
+1. 在暗夜地图点击任意位置
+2. 观星条件预测面板顶部点「★ 收藏」按钮
+3. 该位置(经纬度 + 自动生成的名称)加入收藏
+
+**查看收藏列表**:
+- 导航「我的收藏」或 http://localhost:5173/favorites
+- 列表展示所有收藏点(名称 / 经纬度 / Bortle 等级 / 收藏时间)
+- 点击任一条 → 跳转首页地图并定位到该点
+
+**在星图页使用收藏点**:
+- 进入 `/sky` 星图页面
+- 控制条点「收藏点」下拉
+- 选择任一收藏点 → 星图切换到该位置的星空
+
+**取消收藏**:
+- 收藏列表点「× 删除」按钮
+- 或观星面板里再次点「★」(变回未收藏状态)
+
+---
+
+## 7. 常见问题排查
+
+### 7.1 后端启动报 `Unable to determine Dialect`
 
 **原因**:连不上 MySQL。
 
@@ -303,29 +406,17 @@ VITE v8.x  ready in xxx ms
 ```
 MYSQL_PASSWORD=你的密码;NASA_APOD_API_KEY=INoZW4trwlgvV9sKjpD4DpzWGV3GOkw5Xz0IjFCe
 ```
-(注:Open-Meteo 无需 API Key,无需配置)
 
-### 5.2 后端报 `spring-boot-buildpack-platform` 下载失败
-
-**原因**:Maven 缓存损坏。
-
-**解决**:
-```powershell
-Remove-Item -Recurse -Force "D:\Dev-Cache\MavenRepo\org\springframework\boot\spring-boot-buildpack-platform"
-cd D:\Dev-Projects\personal\project\CityGlow\backend
-mvn spring-boot:run -U
-```
-(路径换成你的 Maven 本地仓库路径)
-
-### 5.3 后端报 `--enable-preview` 相关错误
+### 7.2 后端报 `--enable-preview` 相关错误
 
 **原因**:PostcardService 用了 JDK 21 结构化并发(preview 特性)。
 
 **解决**:
 - IDEA:Run → Edit Configurations → VM options 加 `--enable-preview`(见 3.3)
 - 命令行:`mvn spring-boot:run`(pom.xml 已配好)
+- **注意**:命令行 mvn 可能因为 JAVA_HOME 指向 JDK 25 而失败,建议用 IDEA 跑
 
-### 5.4 前端页面空白 / 控制台报 ECONNREFUSED
+### 7.3 前端页面空白 / 控制台报 ECONNREFUSED
 
 **原因**:后端没启动,或端口不对。
 
@@ -334,7 +425,7 @@ mvn spring-boot:run -U
 2. 前端 Vite proxy 已配 `/api` → `:8080`,只需后端启动即可
 3. 浏览器 F12 → Network 查看失败请求
 
-### 5.5 点击地图没反应 / 报错
+### 7.4 点击地图没反应 / 报错
 
 **原因**:Open-Meteo API 调用失败(网络问题 / 服务端故障)。
 
@@ -343,13 +434,13 @@ mvn spring-boot:run -U
 - Open-Meteo 是免费服务,偶有波动,重试即可
 - 确认网络能访问 `https://api.open-meteo.com/`(浏览器打开测试)
 
-### 5.6 首页 APOD 缩略图不显示
+### 7.5 首页 APOD 缩略图不显示
 
 **原因**:NASA APOD API 调用失败。
 
 **说明**:APOD 是装饰性功能,不显示不影响其他功能。后端有 24h 缓存,首次调用失败后短时间内不会重试。
 
-### 5.7 时间轴页面空白
+### 7.6 时间轴页面空白
 
 **原因**:种子数据未插入。
 
@@ -361,7 +452,14 @@ mvn spring-boot:run -U
    ```
 3. 重启后端,AstroEventSeeder 会自动插入
 
-### 5.8 上传明信片报 400
+### 7.7 星图页面报"加载失败"
+
+**可能原因**:
+1. **后端未重新编译**:IDEA 里 `Build → Rebuild Project` 一次,再重启后端
+2. **后端 API 返回结构不对**:浏览器 F12 → Network 看 `/api/v1/sky/constellation-view` 的响应,应该是 `{"code":200,"message":"success","data":{...}}` 结构
+3. **浏览器定位失败**:页面会自动回退到北京坐标(39.9, 116.4),不影响使用
+
+### 7.8 上传明信片报 400
 
 **原因**:文件格式不对或超限。
 
@@ -370,7 +468,14 @@ mvn spring-boot:run -U
 - 单文件 ≤ 10MB
 - 必须填 lat、lng(数字)
 
-### 5.9 端口被占用
+### 7.9 登录后收藏功能不可用
+
+**排查**:
+1. F12 → Application → Local Storage 检查是否有 `token` 字段
+2. F12 → Network 看收藏请求的 Authorization 头是否带 `Bearer xxx`
+3. 若 token 过期,退出重新登录
+
+### 7.10 端口被占用
 
 **后端 8080**:
 ```powershell
@@ -382,11 +487,16 @@ taskkill /PID <找到的PID> /F
 
 ---
 
-## 6. API 速查
+## 8. API 速查
 
 后端基础地址:http://localhost:8080
 
-### 6.1 观星条件预测
+所有响应均为统一结构:
+```json
+{"code": 200, "message": "success", "data": {...}}
+```
+
+### 8.1 观星条件预测
 
 ```
 GET /api/v1/astro/forecast?lat=39.9&lng=116.4
@@ -409,7 +519,7 @@ GET /api/v1/astro/forecast?lat=39.9&lng=116.4
 }
 ```
 
-### 6.2 天文事件
+### 8.2 天文事件
 
 ```
 GET /api/v1/events                    # 全部事件(按时间升序)
@@ -418,13 +528,35 @@ GET /api/v1/events?after=2026-07-01T00:00:00  # 仅未来事件
 GET /api/v1/events/1                  # 单个事件详情
 ```
 
-### 6.3 NASA 每日天文一图
+### 8.3 NASA 每日天文一图
 
 ```
 GET /api/v1/apod
 ```
 
-### 6.4 星空明信片
+### 8.4 星图视图
+
+```
+GET /api/v1/sky/constellation-view?lat=39.9&lng=116.4&date=2026-12-22&hour=22
+GET /api/v1/sky/myths/orion           # 星座神话(希腊 + 中国)
+```
+
+### 8.5 用户认证
+
+```
+POST /api/v1/auth/register            # body: {username, password}
+POST /api/v1/auth/login               # body: {username, password} → 返回 JWT
+```
+
+### 8.6 收藏观测点(需 JWT)
+
+```
+GET /api/v1/favorites                 # 列出收藏
+POST /api/v1/favorites                # body: {name, latitude, longitude}
+DELETE /api/v1/favorites?lat=39.9&lng=116.4
+```
+
+### 8.7 星空明信片
 
 ```
 POST /api/v1/logs/upload    # multipart: image, lat, lng, locationName, description
@@ -432,7 +564,7 @@ GET /api/v1/logs            # 全部明信片列表
 GET /api/v1/logs/1          # 单张明信片详情
 ```
 
-### 6.5 静态资源
+### 8.8 静态资源
 
 ```
 GET /uploads/{filename}.jpg    # 明信片图片
@@ -444,8 +576,8 @@ GET /uploads/{filename}.jpg    # 明信片图片
 
 | 特性 | 应用位置 | 说明 |
 |---|---|---|
-| 虚拟线程 | `ForecastService` | 并行调 OpenWeather 两个端点,提升响应速度 |
-| Record | 所有 DTO | `AstroData`、`ForecastResult`、`PostcardResult` 等 |
+| 虚拟线程 | `ForecastService` | 并行调 Open-Meteo API,提升响应速度 |
+| Record | 所有 DTO | `AstroData`、`ForecastResult`、`SkyViewResult`、`StarPoint` 等 |
 | 结构化并发 | `PostcardService` | `StructuredTaskScope.ShutdownOnFailure` 并行压缩+水印+元数据 |
 | Pattern Matching | 事件类型分发 | switch 处理 METEOR/ECLIPSE/PLANET |
 
@@ -454,13 +586,14 @@ GET /uploads/{filename}.jpg    # 明信片图片
 ## 附录:数据库表结构
 
 ```sql
-users              -- 用户表(id, username, avatar_url, created_at)
-observation_logs   -- 观星日志(id, user_id, location_name, latitude, longitude, image_url, bortle_level, description, created_at)
-astro_events       -- 天文事件(id, title, event_time, description, event_type)
+users               -- 用户表(id, username, password, avatar_url, created_at)
+astro_events        -- 天文事件(id, title, event_time, description, event_type)
+observation_logs    -- 观星日志(id, user_id, location_name, latitude, longitude, image_url, bortle_level, description, created_at)
+favorite_locations  -- 收藏观测点(id, user_id, name, latitude, longitude, created_at)
 ```
 
 启动时自动建表(ddl-auto=update),无需手动执行 SQL。
 
 ---
 
-如有其他问题,查看源码注释或设计文档 `docs/plans/2026-07-07-cityglow-design.md`。
+如有其他问题,查看源码注释或设计文档 `docs/plans/` 目录。
