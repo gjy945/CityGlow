@@ -43,11 +43,14 @@ public class ApodController {
     @GetMapping
     public ApiResponse<NasaApodResponse> getApod() {
         long now = System.currentTimeMillis();
+        // 第一次读 volatile 字段:命中且未过期直接返回,避免回源 NASA API
         NasaApodResponse current = cached;
         if (current != null && (now - cacheTimestamp) < CACHE_TTL_MS) {
             return ApiResponse.success(current);
         }
+        // 缓存 miss 或过期:回源 NASA API(NasaApodClient 内部还有一层 Caffeine 缓存)
         NasaApodResponse fresh = apodClient.getApod();
+        // 写回 volatile 字段,对其他线程立即可见
         cached = fresh;
         cacheTimestamp = now;
         return ApiResponse.success(fresh);

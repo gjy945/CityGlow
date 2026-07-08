@@ -31,6 +31,7 @@ public class FavoriteLocation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** 关联用户 id。 */
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
@@ -38,12 +39,15 @@ public class FavoriteLocation {
     @Column(nullable = false, length = 100)
     private String name;
 
+    /** 纬度。 */
     @Column(nullable = false)
     private double latitude;
 
+    /** 经度。 */
     @Column(nullable = false)
     private double longitude;
 
+    /** 创建时间(Hibernate 自动注入,不可更新)。 */
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

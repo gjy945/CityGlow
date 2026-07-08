@@ -29,6 +29,7 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** 用户名(唯一,注册时校验)。 */
     @Column(nullable = false, length = 50)
     private String username;
 
@@ -38,9 +39,11 @@ public class User {
     @Column(nullable = false, length = 100)
     private String password;
 
+    /** 头像 URL(可选,当前未启用上传,默认 null)。 */
     @Column(name = "avatar_url")
     private String avatarUrl;
 
+    /** 创建时间(Hibernate 自动注入,不可更新)。 */
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

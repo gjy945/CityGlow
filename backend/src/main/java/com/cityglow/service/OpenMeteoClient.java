@@ -43,13 +43,17 @@ public class OpenMeteoClient {
      * @return Open-Meteo 响应(含 current 云量 + daily sunrise/sunset)
      */
     public OpenMeteoResponse getForecast(double lat, double lng) {
+        // 调用 GET /v1/forecast,一次请求同时取 current(实时云量/温度/湿度)+ daily(今日日出日落)
         return restClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/forecast")
                         .queryParam("latitude", lat)
                         .queryParam("longitude", lng)
+                        // current 字段:实时云量(观星关键指标)+ 温度 + 湿度 + 天气代码
                         .queryParam("current", "cloud_cover,temperature_2m,relative_humidity_2m,weather_code")
+                        // daily 字段:日出日落(用于前端显示和判断夜间时段)
                         .queryParam("daily", "sunrise,sunset")
+                        // timezone=auto:让 API 按经纬度自动选时区,返回本地时间格式的日出日落
                         .queryParam("timezone", "auto")
                         .build())
                 .retrieve()

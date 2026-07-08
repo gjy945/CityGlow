@@ -43,13 +43,16 @@ public class AuthService {
      * @throws RuntimeException 用户名已存在时
      */
     public AuthResponse register(String username, String password) {
+        // 注册前先检查用户名是否已占用,避免唯一约束异常
         if (userRepository.findByUsername(username).isPresent()) {
             throw new RuntimeException("Username already exists: " + username);
         }
         User user = new User();
         user.setUsername(username);
+        // BCrypt 哈希:自带盐,强度 10(默认),不可逆,校验时用 matches 比对
         user.setPassword(passwordEncoder.encode(password));
         User saved = userRepository.save(user);
+        // 注册成功即签发 JWT,免再走一次登录
         String token = jwtUtil.generateToken(username);
         return new AuthResponse(token, toUserInfo(saved));
     }
@@ -63,11 +66,14 @@ public class AuthService {
      * @throws RuntimeException 用户名不存在或密码错误时
      */
     public AuthResponse login(String username, String password) {
+        // 按用户名查找,不存在直接失败(不区分"用户不存在"与"密码错误",降低撞库信息泄露)
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found: " + username));
+        // BCrypt.matches(明文, 哈希):内部重新算盐+哈希后比对,恒定时间比较防时序攻击
         if (!passwordEncoder.matches(password, user.getPassword())) {
             throw new RuntimeException("Invalid password");
         }
+        // 校验通过签发 JWT,后续请求由 JwtAuthenticationFilter 解析并设置 SecurityContext
         String token = jwtUtil.generateToken(username);
         return new AuthResponse(token, toUserInfo(user));
     }

@@ -46,18 +46,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
+        // 1. 从 Authorization header 提取 Bearer token
         String token = extractToken(request);
+        // 2. token 存在且签名/过期校验通过才进入认证流程
         if (StringUtils.hasText(token) && jwtUtil.validateToken(token)) {
+            // 3. 从 token 载荷解析 username(subject)
             String username = jwtUtil.extractUsername(token);
+            // 4. 二次校验:确保用户仍存在(防止用户被删除后旧 token 仍可用)
             Optional<User> userOpt = userRepository.findByUsername(username);
+            // 5. 仅当 SecurityContext 未设置认证(避免覆盖已有认证)且用户存在时才写入
             if (userOpt.isPresent() && SecurityContextHolder.getContext().getAuthentication() == null) {
-                // 用 username 作为 principal,密码留空,授予普通用户角色
+                // 用 username 作为 principal,密码留空(已认证无需密码),授予普通用户角色
                 UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
                         username, null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
                 auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                // 写入 SecurityContext,后续 Controller 通过 SecurityContextHolder 取用
                 SecurityContextHolder.getContext().setAuthentication(auth);
             }
         }
+        // 无 token 或校验失败也不抛异常,继续过滤链,由 SecurityFilterChain 决定放行/401
         filterChain.doFilter(request, response);
     }
 

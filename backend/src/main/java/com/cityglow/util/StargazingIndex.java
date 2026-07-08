@@ -54,6 +54,7 @@ public final class StargazingIndex {
         if (temperatureC < 0 || temperatureC > 30) {
             score -= 5;
         }
+        // 钳制到 [0, 100] 后四舍五入为整数,确保返回值始终在合法区间
         return (int) Math.round(Math.max(0, Math.min(100, score)));
     }
 

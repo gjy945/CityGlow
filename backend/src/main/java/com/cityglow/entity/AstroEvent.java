@@ -30,15 +30,19 @@ public class AstroEvent {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** 事件标题(如"英仙座流星雨极大")。 */
     @Column(nullable = false, length = 100)
     private String title;
 
+    /** 事件发生时刻(UTC,前端按本地时区展示)。 */
     @Column(name = "event_time", nullable = false)
     private LocalDateTime eventTime;
 
+    /** 事件详细描述(观测建议、流量预测等,TEXT 类型无长度限制)。 */
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    /** 事件类型:METEOR(流星雨)/ ECLIPSE(日月食)/ PLANET(行星合)等。 */
     @Column(name = "event_type", length = 20)
     private String eventType;
 }

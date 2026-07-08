@@ -61,6 +61,7 @@ public class StarProjectionService {
 
         double jd = toJulianDate(date, hour);
         double gmst = calculateGmst(jd);
+        // 当地恒星时 LST = GMST + 经度(东经为正),用于计算时角 H = LST - RA
         double lst = normalizeAngle(gmst + longitude);
         double latRad = Math.toRadians(latitude);
 
@@ -69,6 +70,7 @@ public class StarProjectionService {
             double[] azAlt = equatorialToHorizontal(star.ra(), star.dec(), lst, latRad);
             double az = azAlt[0];
             double alt = azAlt[1];
+            // 过滤地平线以下的星(alt ≤ 0 不可见)
             if (alt > 0) {
                 visible.add(new StarPoint(star.hip(), star.mag(), az, alt));
             }
@@ -78,13 +80,18 @@ public class StarProjectionService {
 
     /**
      * LocalDate + hour → 儒略日。
-     * 假设输入是 Asia/Shanghai 当地时间,转 UTC 后算 JD。
+     *
+     * <p>假设输入是 Asia/Shanghai 当地时间,转 UTC 后算 JD。
+     * 公式:JD = 2440587.5 + epochDay + hour/24 + minute/1440 + second/86400
+     * (2440587.5 是 1970-01-01T00:00:00Z 对应的儒略日)</p>
      */
     private double toJulianDate(LocalDate date, int hour) {
         LocalDateTime local = date.atTime(hour, 0);
+        // Asia/Shanghai 当地时间 → UTC,保证 GMST 计算基准统一
         ZonedDateTime utc = local.atZone(ZoneId.of("Asia/Shanghai"))
                 .withZoneSameInstant(ZoneOffset.UTC);
         long epochDay = utc.toLocalDate().toEpochDay();
+        // 2440587.5 = Unix 纪元(1970-01-01)对应的儒略日
         return 2440587.5 + epochDay
                 + utc.getHour() / 24.0
                 + utc.getMinute() / 1440.0
@@ -92,10 +99,17 @@ public class StarProjectionService {
     }
 
     /**
-     * 计算格林尼治平恒星时(度)。
+     * 计算格林尼治平恒星时 GMST(度)。
+     *
+     * <p>公式(参考 IAU 1982):
+     * GMST = 280.46061837° + 360.98564736629° × (JD - J2000)
+     *        + 0.000387933° × T² - T³ / 38710000
+     * 其中 T = (JD - J2000) / 36525(儒略世纪)。</p>
      */
     private double calculateGmst(double jd) {
+        // T:自 J2000 起的儒略世纪数
         double t = (jd - J2000) / 36525.0;
+        // 主项 360.98564736629° × (JD - J2000):地球自转速率,每日约 360.9856°
         double gmst = 280.46061837
                 + 360.98564736629 * (jd - J2000)
                 + 0.000387933 * t * t
@@ -104,7 +118,15 @@ public class StarProjectionService {
     }
 
     /**
-     * 赤道坐标 → 地平坐标。
+     * 赤道坐标 → 地平坐标(球面三角转换)。
+     *
+     * <p>核心公式:</p>
+     * <ul>
+     *   <li>时角 H = LST - RA(度,转弧度后参与三角运算)</li>
+     *   <li>sin(Alt) = sin(Dec)·sin(Lat) + cos(Dec)·cos(Lat)·cos(H)</li>
+     *   <li>cos(Az) = [sin(Dec) - sin(Alt)·sin(Lat)] / [cos(Alt)·cos(Lat)]</li>
+     *   <li>当 sin(H) &gt; 0 时方位角取 360 - Az(修正象限)</li>
+     * </ul>
      *
      * @param ra    赤经(度)
      * @param dec   赤纬(度)
@@ -113,25 +135,31 @@ public class StarProjectionService {
      * @return [azimuth, altitude] 度数
      */
     private double[] equatorialToHorizontal(double ra, double dec, double lst, double latRad) {
+        // 时角 H:天体相对当地子午圈的角度,LST - RA
         double haRad = Math.toRadians(normalizeAngle(lst - ra));
         double decRad = Math.toRadians(dec);
 
+        // 高度角公式:sin(Alt) = sin(Dec)·sin(Lat) + cos(Dec)·cos(Lat)·cos(H)
         double sinAlt = Math.sin(decRad) * Math.sin(latRad)
                       + Math.cos(decRad) * Math.cos(latRad) * Math.cos(haRad);
+        // 钳制到 [-1, 1],避免浮点误差导致 asin 返回 NaN
         sinAlt = Math.max(-1, Math.min(1, sinAlt));
         double alt = Math.toDegrees(Math.asin(sinAlt));
 
         double cosAlt = Math.cos(Math.toRadians(alt));
         double cosAz = 1.0;
         if (Math.abs(cosAlt) > 1e-10) {
+            // 方位角公式:cos(Az) = [sin(Dec) - sin(Alt)·sin(Lat)] / [cos(Alt)·cos(Lat)]
             double numerator = Math.sin(decRad) - Math.sin(Math.toRadians(alt)) * Math.sin(latRad);
             double denom = cosAlt * Math.cos(latRad);
             if (Math.abs(denom) > 1e-10) {
                 cosAz = numerator / denom;
+                // 同样钳制到 [-1, 1],避免 acos 越界
                 cosAz = Math.max(-1, Math.min(1, cosAz));
             }
         }
         double az = Math.toDegrees(Math.acos(cosAz));
+        // acos 只返回 [0, 180°],需根据时角正负判断东/西半球:sin(H) > 0 表示天体在西,方位角取 360 - Az
         if (Math.sin(haRad) > 0) {
             az = 360 - az;
         }

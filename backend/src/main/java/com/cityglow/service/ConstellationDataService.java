@@ -61,27 +61,50 @@ public class ConstellationDataService {
 
     // ===== 查询接口 =====
 
-    /** 获取所有星座名(12 个,如 "orion", "ursaMajor" 等)。 */
+    /**
+     * 获取所有星座名(12 个,如 "orion", "ursaMajor" 等)。
+     *
+     * @return 不可修改的星座名集合
+     */
     public Set<String> getAllConstellationNames() {
         return Collections.unmodifiableSet(constellations.keySet());
     }
 
-    /** 按 name 获取星座原始数据(含 starHips 和 lines)。 */
+    /**
+     * 按 name 获取星座原始数据(含 starHips 和 lines)。
+     *
+     * @param name 星座名(如 "orion")
+     * @return 星座数据(不存在返回 empty)
+     */
     public Optional<ConstellationRecord> getConstellation(String name) {
         return Optional.ofNullable(constellations.get(name));
     }
 
-    /** 获取所有星座原始数据。 */
+    /**
+     * 获取所有星座原始数据。
+     *
+     * @return 不可修改的星座数据集合
+     */
     public Collection<ConstellationRecord> getAllConstellations() {
         return Collections.unmodifiableCollection(constellations.values());
     }
 
-    /** 按 HIP 获取原始星(赤道坐标)。 */
+    /**
+     * 按 HIP 获取原始星(赤道坐标)。
+     *
+     * @param hip Hipparcos 星表编号
+     * @return 星数据(不存在返回 empty)
+     */
     public Optional<StarRecord> getStar(int hip) {
         return Optional.ofNullable(hipToStar.get(hip));
     }
 
-    /** 按 HIP 批量获取原始星。 */
+    /**
+     * 按 HIP 批量获取原始星(跳过不存在的 HIP)。
+     *
+     * @param hips HIP 编号集合
+     * @return 命中的星列表(可能为空,顺序与入参一致)
+     */
     public List<StarRecord> getStars(Collection<Integer> hips) {
         List<StarRecord> result = new ArrayList<>();
         for (int hip : hips) {
@@ -91,14 +114,25 @@ public class ConstellationDataService {
         return result;
     }
 
-    /** 获取某星座的神话故事(指定文化)。 */
+    /**
+     * 获取某星座的神话故事(指定文化)。
+     *
+     * @param constellation 星座名
+     * @param culture       文化(如 "greek" / "chinese")
+     * @return 神话卡(不存在返回 empty)
+     */
     public Optional<MythCard> getMyth(String constellation, String culture) {
         Map<String, MythCard> byCulture = myths.get(constellation);
         if (byCulture == null) return Optional.empty();
         return Optional.ofNullable(byCulture.get(culture));
     }
 
-    /** 获取某星座的全部神话(希腊 + 中国,2 篇)。 */
+    /**
+     * 获取某星座的全部神话(希腊 + 中国,2 篇)。
+     *
+     * @param constellation 星座名
+     * @return 神话卡列表(无则空列表)
+     */
     public List<MythCard> getMyths(String constellation) {
         Map<String, MythCard> byCulture = myths.get(constellation);
         if (byCulture == null) return List.of();

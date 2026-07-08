@@ -39,10 +39,15 @@ public final class MoonPhaseCalculator {
      * @return 月相相位 0-1(0/1=新月, 0.5=满月)
      */
     public static double calculatePhase(LocalDate date) {
+        // 基准新月时刻 → unix 秒
         long refSeconds = REFERENCE_NEW_MOON.toEpochSecond(ZoneOffset.UTC);
+        // 输入日期 00:00 UTC → unix 秒(按天精度,忽略时分秒)
         long nowSeconds = date.atStartOfDay().toEpochSecond(ZoneOffset.UTC);
+        // 距基准新月的整数天 + 小数天
         double daysSinceNewMoon = (nowSeconds - refSeconds) / 86400.0;
+        // 对朔望月周期取余 → 归一化到 [0, 1)
         double phase = (daysSinceNewMoon % SYNODIC_MONTH) / SYNODIC_MONTH;
+        // 处理负数(基准前日期),平移到 [0, 1)
         if (phase < 0) {
             phase += 1;
         }
