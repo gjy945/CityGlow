@@ -59,18 +59,31 @@ public class StarProjectionService {
             int hour,
             List<StarRecord> stars) {
 
+        // ═══════ 第 1 步:把当地日期+小时转成儒略日 JD ═══════
+        // 儒略日是从公元前 4713 年开始的连续天数,天文学用它来方便地计算时间间隔
         double jd = toJulianDate(date, hour);
+
+        // ═══════ 第 2 步:由 JD 算格林尼治平恒星时 GMST ═══════
+        // GMST 表示格林尼治子午圈相对春分点的角度,反映地球的自转状态
         double gmst = calculateGmst(jd);
-        // 当地恒星时 LST = GMST + 经度(东经为正),用于计算时角 H = LST - RA
+
+        // ═══════ 第 3 步:算当地恒星时 LST = GMST + 经度 ═══════
+        // 东经为正,加上经度后得到观测者所在子午线的恒星时
+        // LST 用来计算时角 H = LST - RA,即天体相对当地子午圈的角度
         double lst = normalizeAngle(gmst + longitude);
+
+        // 纬度转弧度(三角函数要用弧度)
         double latRad = Math.toRadians(latitude);
 
         List<StarPoint> visible = new ArrayList<>();
+        // ═══════ 第 4 步:逐颗星做坐标转换 ═══════
         for (StarRecord star : stars) {
+            // 调用球面三角公式,把 (RA, Dec) 转成 (Az, Alt)
             double[] azAlt = equatorialToHorizontal(star.ra(), star.dec(), lst, latRad);
             double az = azAlt[0];
             double alt = azAlt[1];
-            // 过滤地平线以下的星(alt ≤ 0 不可见)
+            // ═══════ 第 5 步:过滤地平线以下的星 ═══════
+            // 高度角 Alt ≤ 0 表示星在地平线以下,观测者看不到,直接丢弃
             if (alt > 0) {
                 visible.add(new StarPoint(star.hip(), star.mag(), az, alt));
             }
@@ -107,13 +120,22 @@ public class StarProjectionService {
      * 其中 T = (JD - J2000) / 36525(儒略世纪)。</p>
      */
     private double calculateGmst(double jd) {
-        // T:自 J2000 起的儒略世纪数
+        // T:自 J2000 起的儒略世纪数(36525 天 = 100 年),用于高阶修正项
         double t = (jd - J2000) / 36525.0;
-        // 主项 360.98564736629° × (JD - J2000):地球自转速率,每日约 360.9856°
+        // ┌─────────────────────────────────────────────────────────┐
+        // │ IAU 1982 GMST 公式(国际天文联合会标准)                  │
+        // │                                                         │
+        // │ 常数项 280.46061837°:J2000 时刻的 GMST 初值              │
+        // │ 主项 360.98564736629° × (JD - J2000):地球自转,每天约一圈  │
+        // │   注意 360.9856 > 360,因为地球自转一圈同时公转了一点,      │
+        // │   相对春分点要多转一点才能回到同一位置(恒星日 < 太阳日)    │
+        // │ T²、T³ 项:长期变化修正(岁差、潮汐摩擦导致自转减慢)        │
+        // └─────────────────────────────────────────────────────────┘
         double gmst = 280.46061837
                 + 360.98564736629 * (jd - J2000)
                 + 0.000387933 * t * t
                 - t * t * t / 38710000.0;
+        // 规范化到 [0, 360) 度,避免角度无限增长
         return normalizeAngle(gmst);
     }
 
@@ -135,11 +157,27 @@ public class StarProjectionService {
      * @return [azimuth, altitude] 度数
      */
     private double[] equatorialToHorizontal(double ra, double dec, double lst, double latRad) {
-        // 时角 H:天体相对当地子午圈的角度,LST - RA
+        // ──────────────────────────────────────────────────────────
+        // 时角 H(Hour Angle):天体相对当地子午圈的角度
+        //   H = LST - RA
+        //   LST 是当地恒星时(子午圈位置),RA 是天体的赤经
+        //   H = 0 表示天体在子午圈正上方(最高点)
+        //   H > 0 表示天体已经过了子午圈(向西移动)
+        // ──────────────────────────────────────────────────────────
         double haRad = Math.toRadians(normalizeAngle(lst - ra));
         double decRad = Math.toRadians(dec);
 
-        // 高度角公式:sin(Alt) = sin(Dec)·sin(Lat) + cos(Dec)·cos(Lat)·cos(H)
+        // ┌─────────────────────────────────────────────────────────┐
+        // │ 高度角 Alt 公式(球面三角余弦定律)                       │
+        // │                                                         │
+        // │   sin(Alt) = sin(Dec)·sin(Lat) + cos(Dec)·cos(Lat)·cos(H) │
+        // │                                                         │
+        // │ 直觉理解:                                               │
+        // │   - sin(Dec)·sin(Lat):赤纬与纬度的「对齐」贡献            │
+        // │     如果 Dec=Lat(星在观测者正上方),cos(H)=1 时 Alt=90°     │
+        // │   - cos(Dec)·cos(Lat)·cos(H):随时间变化的部分             │
+        // │     地球自转 H 变化,星的高度随之升降                      │
+        // └─────────────────────────────────────────────────────────┘
         double sinAlt = Math.sin(decRad) * Math.sin(latRad)
                       + Math.cos(decRad) * Math.cos(latRad) * Math.cos(haRad);
         // 钳制到 [-1, 1],避免浮点误差导致 asin 返回 NaN
@@ -149,7 +187,16 @@ public class StarProjectionService {
         double cosAlt = Math.cos(Math.toRadians(alt));
         double cosAz = 1.0;
         if (Math.abs(cosAlt) > 1e-10) {
-            // 方位角公式:cos(Az) = [sin(Dec) - sin(Alt)·sin(Lat)] / [cos(Alt)·cos(Lat)]
+            // ┌─────────────────────────────────────────────────────────┐
+            // │ 方位角 Az 公式(由 sin(Alt) 公式反推)                    │
+            // │                                                         │
+            // │   cos(Az) = [sin(Dec) - sin(Alt)·sin(Lat)]              │
+            // │             / [cos(Alt)·cos(Lat)]                       │
+            // │                                                         │
+            // │ 直觉:已知高度角后,用同样的球面三角关系反解方位角          │
+            // │ 分母 cos(Alt)·cos(Lat) 接近 0 时(星在天顶或地平极点),     │
+            // │ 方位角不确定,跳过计算保留默认值                          │
+            // └─────────────────────────────────────────────────────────┘
             double numerator = Math.sin(decRad) - Math.sin(Math.toRadians(alt)) * Math.sin(latRad);
             double denom = cosAlt * Math.cos(latRad);
             if (Math.abs(denom) > 1e-10) {
@@ -159,7 +206,12 @@ public class StarProjectionService {
             }
         }
         double az = Math.toDegrees(Math.acos(cosAz));
-        // acos 只返回 [0, 180°],需根据时角正负判断东/西半球:sin(H) > 0 表示天体在西,方位角取 360 - Az
+        // ──────────────────────────────────────────────────────────
+        // 象限修正:acos 函数只返回 [0, 180°]
+        // 但方位角是 [0, 360°),需要判断星在东半球还是西半球
+        // sin(H) > 0 → H 在 (0, 180°)→ 星在西侧(已过子午圈)→ Az = 360 - Az
+        // sin(H) ≤ 0 → H 在 (180°, 360°)→ 星在东侧(未到子午圈)→ Az 不变
+        // ──────────────────────────────────────────────────────────
         if (Math.sin(haRad) > 0) {
             az = 360 - az;
         }
