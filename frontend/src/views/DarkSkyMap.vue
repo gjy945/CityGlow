@@ -53,6 +53,14 @@ const apod = computed(() => apodStore.data)
 const apodLoading = computed(() => apodStore.loading)
 const eventsLoading = computed(() => eventsStore.loading)
 
+// 判断是否为MP4视频
+const isApodVideo = computed(() => {
+  if (!apod.value) return false
+  const mediaUrl = apod.value.url || ''
+  const mediaType = apod.value.media_type
+  return mediaType === 'video' || mediaUrl.endsWith('.mp4')
+})
+
 function handleClick({ lat, lng }: { lat: number; lng: number }) {
   lastClick.value = { lat, lng }
   forecastCoords.value = { lat, lng }
@@ -89,17 +97,17 @@ function locate() {
   }
   locating.value = true
   navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const { latitude, longitude } = pos.coords
-      mapRef.value?.flyTo(latitude, longitude, 11)
-      locating.value = false
-    },
-    () => {
-      // 定位失败:回退北京
-      mapRef.value?.flyTo(39.9, 116.4, 11)
-      locating.value = false
-    },
-    { enableHighAccuracy: true, timeout: 10000 },
+      (pos) => {
+        const { latitude, longitude } = pos.coords
+        mapRef.value?.flyTo(latitude, longitude, 11)
+        locating.value = false
+      },
+      () => {
+        // 定位失败:回退北京
+        mapRef.value?.flyTo(39.9, 116.4, 11)
+        locating.value = false
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
   )
 }
 
@@ -112,33 +120,33 @@ onMounted(() => {
 <template>
   <section class="relative h-[calc(100vh-64px)] w-full overflow-hidden">
     <DarkSkyLeaflet
-      ref="mapRef"
-      :markers="markers"
-      class="map-fade-in"
-      @map-click="handleClick"
-      @ready="handleReady"
-      @marker-click="handleMarkerClick"
+        ref="mapRef"
+        :markers="markers"
+        class="map-fade-in"
+        @map-click="handleClick"
+        @ready="handleReady"
+        @marker-click="handleMarkerClick"
     />
 
     <!-- 左上:定位按钮 -->
     <button
-      class="map-btn map-btn--locate glass-panel fade-in-delay-1"
-      :class="{ 'is-busy': locating }"
-      :disabled="locating"
-      @click="locate"
-      :aria-label="t('map.locate')"
-      :title="t('map.locate')"
+        class="map-btn map-btn--locate glass-panel fade-in-delay-1"
+        :class="{ 'is-busy': locating }"
+        :disabled="locating"
+        @click="locate"
+        :aria-label="t('map.locate')"
+        :title="t('map.locate')"
     >
       <svg
-        v-if="!locating"
-        width="18"
-        height="18"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.6"
-        stroke-linecap="round"
-        stroke-linejoin="round"
+          v-if="!locating"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
       >
         <circle cx="12" cy="12" r="3.2" />
         <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
@@ -146,24 +154,33 @@ onMounted(() => {
       <div v-else class="spinner" />
     </button>
 
-    <!-- 右上:APOD 缩略图 -->
+    <!-- 右上:APOD 缩略图（区分图片/MP4视频） -->
     <button
-      v-if="apod"
-      class="map-btn map-btn--apod glass-panel"
-      :class="{ 'is-image': apod.media_type === 'image' }"
-      @click="apodModalOpen = true"
-      :title="apod.title"
-      :aria-label="t('map.viewApod')"
+        v-if="apod"
+        class="map-btn map-btn--apod glass-panel"
+        :class="{ 'is-image': apod.media_type === 'image' }"
+        @click="apodModalOpen = true"
+        :title="apod.title"
+        :aria-label="t('map.viewApod')"
     >
+      <!-- 图片类型缩略图 -->
       <img
-        v-if="apod.media_type === 'image'"
-        :src="apod.url"
-        :alt="apod.title"
-        class="apod-thumb-img"
+          v-if="apod.media_type === 'image'"
+          :src="apod.url"
+          :alt="apod.title"
+          class="apod-thumb-img"
       />
+      <!-- MP4视频占位缩略图（播放图标） -->
+      <div v-else-if="isApodVideo" class="apod-thumb-video">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="#c5a572">
+          <path d="M8 5v14l11-7z" />
+        </svg>
+      </div>
+      <!-- 其他媒体兜底占位 -->
       <div v-else class="apod-thumb-placeholder">
         <span class="font-display text-lg text-dark-gold">APOD</span>
       </div>
+
       <div class="apod-thumb-overlay">
         <p class="font-mono text-[9px] uppercase tracking-[0.2em] text-dark-gold">
           NASA · APOD
@@ -172,16 +189,16 @@ onMounted(() => {
       </div>
     </button>
     <div
-      v-else-if="apodLoading"
-      class="map-btn map-btn--apod map-btn--loading glass-panel"
+        v-else-if="apodLoading"
+        class="map-btn map-btn--apod map-btn--loading glass-panel"
     >
       <div class="spinner" />
     </div>
 
     <!-- 左下:最近点击坐标 -->
     <div
-      v-if="lastClick"
-      class="map-info map-info--coords glass-panel"
+        v-if="lastClick"
+        class="map-info map-info--coords glass-panel"
     >
       <p class="font-mono text-[9px] uppercase tracking-[0.25em] text-dark-gold/80">
         {{ t('map.lastClick') }}
@@ -204,8 +221,8 @@ onMounted(() => {
 
     <!-- 事件加载指示器(右下角章节标识附近) -->
     <div
-      v-if="eventsLoading"
-      class="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1000] glass-panel rounded-full px-4 py-2 flex items-center gap-2"
+        v-if="eventsLoading"
+        class="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1000] glass-panel rounded-full px-4 py-2 flex items-center gap-2"
     >
       <div class="spinner spinner--sm" />
       <span class="font-mono text-[10px] text-moonlight/70 tracking-wider">
@@ -216,50 +233,63 @@ onMounted(() => {
     <!-- 右侧滑出 ForecastPanel -->
     <Transition name="slide">
       <ForecastPanel
-        v-if="forecastOpen && forecastCoords"
-        :lat="forecastCoords.lat"
-        :lng="forecastCoords.lng"
-        :embedded="true"
-        class="forecast-slide"
-        @close="closeForecast"
+          v-if="forecastOpen && forecastCoords"
+          :lat="forecastCoords.lat"
+          :lng="forecastCoords.lng"
+          :embedded="true"
+          class="forecast-slide"
+          @close="closeForecast"
       />
     </Transition>
 
-    <!-- APOD 全屏 Modal -->
+    <!-- APOD 全屏 Modal（图片 + MP4视频双适配） -->
     <Teleport to="body">
       <Transition name="fade">
         <div
-          v-if="apodModalOpen && apod"
-          class="apod-modal-overlay"
-          @click.self="apodModalOpen = false"
+            v-if="apodModalOpen && apod"
+            class="apod-modal-overlay"
+            @click.self="apodModalOpen = false"
         >
           <div class="apod-modal glass-panel">
             <button
-              class="apod-modal-close"
-              @click="apodModalOpen = false"
-              :aria-label="t('common.close')"
+                class="apod-modal-close"
+                @click="apodModalOpen = false"
+                :aria-label="t('common.close')"
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path
-                  d="M2 2 L12 12 M12 2 L2 12"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
+                    d="M2 2 L12 12 M12 2 L2 12"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
                 />
               </svg>
             </button>
             <div class="apod-modal-media">
+              <!-- 图片媒体 -->
               <img
-                v-if="apod.media_type === 'image'"
-                :src="apod.hdurl || apod.url"
-                :alt="apod.title"
+                  v-if="apod.media_type === 'image'"
+                  :src="apod.hdurl || apod.url"
+                  :alt="apod.title"
               />
+              <!-- MP4视频媒体：原生video标签，带控制栏、静音预加载 -->
+              <video
+                  v-else-if="isApodVideo"
+                  class="apod-modal-video"
+                  :src="apod.url"
+                  autoplay
+                  muted
+                  controls
+                  preload="auto"
+              />
+              <!-- 其他外链视频兜底iframe（油管等） -->
               <iframe
-                v-else
-                :src="apod.url"
-                class="apod-modal-video"
-                frameborder="0"
-                allowfullscreen
+                  v-else
+                  :src="apod.url"
+                  class="apod-modal-iframe"
+                  frameborder="0"
+                  allowfullscreen
+                  allow="autoplay; fullscreen"
               />
             </div>
             <div class="apod-modal-info">
@@ -356,6 +386,15 @@ onMounted(() => {
   object-fit: cover;
   display: block;
 }
+/* MP4视频缩略图占位 */
+.apod-thumb-video {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a1f3a, #0a0e1a);
+}
 .apod-thumb-placeholder {
   width: 100%;
   height: 100%;
@@ -372,9 +411,9 @@ onMounted(() => {
   justify-content: flex-end;
   padding: 6px;
   background: linear-gradient(
-    to top,
-    rgba(10, 14, 26, 0.95) 0%,
-    transparent 65%
+      to top,
+      rgba(10, 14, 26, 0.95) 0%,
+      transparent 65%
   );
   opacity: 0;
   transition: opacity 0.28s ease;
@@ -415,7 +454,7 @@ onMounted(() => {
 .slide-enter-active,
 .slide-leave-active {
   transition: transform 0.42s cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 0.3s ease;
+  opacity 0.3s ease;
 }
 .slide-enter-from,
 .slide-leave-to {
@@ -481,10 +520,19 @@ onMounted(() => {
 .apod-modal-media img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
+/* MP4原生视频样式 */
 .apod-modal-video {
+  width: 100%;
+  height: 100%;
+  max-height: 90vh;
+  object-fit: contain;
+  background: #000;
+}
+/* 油管等第三方iframe视频 */
+.apod-modal-iframe {
   width: 100%;
   height: 100%;
   min-height: 320px;
@@ -555,6 +603,9 @@ onMounted(() => {
     max-height: 95vh;
   }
   .apod-modal-media {
+    max-height: 45vh;
+  }
+  .apod-modal-video {
     max-height: 45vh;
   }
   .apod-modal-info {

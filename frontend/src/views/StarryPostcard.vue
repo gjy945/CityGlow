@@ -125,15 +125,20 @@ async function submit() {
     return
   }
   try {
-    const result = await logsStore.upload({
+    await logsStore.upload({
       image: file.value,
       lat: latNum,
       lng: lngNum,
       locationName: locationName.value || undefined,
       description: description.value || undefined,
     })
-    if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
-    router.push(`/postcard/${result.logId}`)
+    // 上传成功:清空表单 + 刷新画廊列表
+    clearFile()
+    lat.value = ''
+    lng.value = ''
+    locationName.value = ''
+    description.value = ''
+    await logsStore.fetchList()
   } catch (e) {
     formError.value = (e as Error).message || t('postcard.errors.uploadFailed')
   }
